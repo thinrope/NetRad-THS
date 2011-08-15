@@ -16,6 +16,10 @@ If you are not into development just get a stable snapshot from
 https://github.com/thinrope/NetRad-THS, otherwise use your favorte git tool to
 improve the source and send pull requests.
 
+To have your unit upload data to http://pachube.com/ you need to setup an
+account with them, or use the THS shared account. To use the THS shared
+account, please contact kalin@safecast.org and you'll be given an ID.
 
-THIS IS A WORK IN PROGRESS< PLEASE BEAR WITH ME!
+
+THIS IS A WORK IN PROGRESS, PLEASE BEAR WITH ME!
 Feel free to submit issues, or contact the developers directly.
