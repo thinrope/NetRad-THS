@@ -3,3 +3,19 @@ counter units.
 
 http://www.tokyohackerspace.org/en/event/DIY-GM-workshop-08_22
 
+To be able to update/change the firmware of your DIY GM counter, you'll need:
+a) a toolchain to build (compile/link) the source for the Arduino
+b) a tool to upload the binary to the flash of the Arduino
+c) way to access the source code and related libraries
+
+One relatively simple way is to download the appropriate "Arduino IDE" for your
+OS of choice from http://arduino.cc/en/Main/Software since this provides both
+a) and b) above.
+
+If you are not into development just get a stable snapshot from
+https://github.com/thinrope/NetRad-THS, otherwise use your favorte git tool to
+improve the source and send pull requests.
+
+
+THIS IS A WORK IN PROGRESS< PLEASE BEAR WITH ME!
+Feel free to submit issues, or contact the developers directly.
