@@ -3,6 +3,22 @@ counter units.
 
 http://www.tokyohackerspace.org/en/event/DIY-GM-workshop-08_22
 
+See this for more insights on the history of this kit:
+http://tokyohackerspace.org/en/blog/tokyo-hackerspacerdtn-geiger-shield-dev-history
+
+This kit is a THS[1] project in collaboration with SafeCast[2]. Once you buy
+and build your device, you own it (hardware and software) and the data it
+produces. You can opt-in to have your data logged to the THS account on
+Pachube[3] (for free) and have it available to the public (for free).
+
+[1]	http://tokyohackerspace.org/
+[2]	http://safecast.org/
+[3]	http://pachube.com/feeds?user=tokyohackerspace
+
+
+
+
+
 To be able to update/change the firmware of your DIY GM counter, you'll need:
 a) a toolchain to build (compile/link) the source for the Arduino
 b) a tool to upload the binary to the flash of the Arduino
@@ -22,4 +38,4 @@ account, please contact kalin@safecast.org and you'll be given an ID.
 
 
 THIS IS A WORK IN PROGRESS, PLEASE BEAR WITH ME!
-Feel free to submit issues, or contact the developers directly.
+Feel free to submit issues on github, or contact the developers directly.
