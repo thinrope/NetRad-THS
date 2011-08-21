@@ -19,6 +19,8 @@
 #include <stdint.h>
 #include "PrivateSettings.h"
 
+static char VERSION[] = "1.0.2";
+
 // this holds the info for the device
 static device_t dev;
 
@@ -135,6 +137,13 @@ void setup() {
       break;
     }
     
+    tone(pinSpkr, 500); delay(500); noTone(pinSpkr);
+    tone(pinSpkr, 1500); delay(500); noTone(pinSpkr);
+    tone(pinSpkr, 500); delay(500); noTone(pinSpkr);
+
+
+    cmdStat(0,0);
+    
     // Initiate a DHCP session
     Serial.println("Getting an IP address...");
     EthernetDHCP.begin(macAddress);
@@ -142,7 +151,7 @@ void setup() {
     // We now have a DHCP lease, so we print out some information
     const byte* ipAddr = EthernetDHCP.ipAddress();
     
-    Serial.print("IP address: ");
+    Serial.print("IP address:\t");
     Serial.print(ipAddr[0], DEC);
     Serial.print(".");
     Serial.print(ipAddr[1], DEC);
@@ -201,7 +210,7 @@ void loop()
     {
       eventFlag = 0;    // clear the event flag for later use
       
-      Serial.print("."); 
+      //Serial.print("."); 
       tone(pinSpkr, 1000);      // beep the piezo speaker
       
       digitalWrite(pinLED, HIGH); // flash the LED
@@ -348,7 +357,7 @@ unsigned long elapsedTime(unsigned long startTime)
 /**************************************************************************/
 void cmdGetAddr(int arg_cnt, char **args)
 {
-  printf_P(PSTR("Address = %04X.\n"), dev.addr);
+  printf_P(PSTR("MAC_address:\t%04X\n"), dev.addr);
 }
 
 /**************************************************************************/
@@ -356,11 +365,9 @@ void cmdGetAddr(int arg_cnt, char **args)
 /**************************************************************************/
 void cmdSetAddr(int arg_cnt, char **args)
 {
-  byte i;
-  
   dev.addr = strtol(args[1], NULL, 16);
   eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-  printf_P(PSTR("Address set to %04X.\n"), dev.addr);
+  printf_P(PSTR("MAC_address set to %04X\n"), dev.addr);
 }
 
 /**************************************************************************/
@@ -368,19 +375,22 @@ void cmdSetAddr(int arg_cnt, char **args)
 /**************************************************************************/
 void cmdGetFeedID(int arg_cnt, char **args)
 {
-  printf_P(PSTR("Feed ID = %06d.\n"), dev.feedID);
+  printf_P(PSTR("Feed_ID:\t%u\n"), dev.feedID);
 }
 
 /**************************************************************************/
 // Set the current feed ID
 /**************************************************************************/
 void cmdSetFeedID(int arg_cnt, char **args)
-{
-  byte i;
-  
+{ 
   dev.feedID = strtol(args[1], NULL, 10);
   eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-  printf_P(PSTR("Feed ID set to %06d.\n"), dev.feedID);
+  printf_P(PSTR("Feed ID set to %u\n"), dev.feedID);
+}
+
+void GetFirmwareVersion()
+{
+  printf_P(PSTR("Firmware_ver:\t%s\n"), VERSION);
 }
 
 /**************************************************************************/
@@ -388,7 +398,7 @@ void cmdSetFeedID(int arg_cnt, char **args)
 /**************************************************************************/
 void cmdGetDevID(int arg_cnt, char **args)
 {
-  printf_P(PSTR("Device ID = %s.\n"), dev.devID);
+  printf_P(PSTR("Device_ID:\t%s\n"), dev.devID);
 }
 
 /**************************************************************************/
@@ -402,7 +412,7 @@ void cmdSetDevID(int arg_cnt, char **args)
   {
     memcpy(dev.devID, args[1], strlen(args[1]) + 1);
     eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-    printf_P(PSTR("Device ID set to %s.\n"), dev.devID);
+    printf_P(PSTR("Device ID set to %s\n"), dev.devID);
   }
   else
   {
@@ -415,9 +425,10 @@ void cmdSetDevID(int arg_cnt, char **args)
 /**************************************************************************/
 void cmdStat(int arg_cnt, char **args)
 {
-  printf_P(PSTR("Device Address \t= %04X.\n"), dev.addr);
-  printf_P(PSTR("Device Feed ID \t= %06d.\n"), dev.feedID);
-  printf_P(PSTR("Device ID \t= %s.\n"), dev.devID);
+  cmdGetAddr(arg_cnt, args);
+  cmdGetFeedID(arg_cnt, args);
+  cmdGetDevID(arg_cnt, args);
+  GetFirmwareVersion();
 }
 
 
@@ -428,4 +439,3 @@ static int uart_putchar (char c, FILE *stream)
     Serial.write(c) ;
     return 0 ;
 }
-

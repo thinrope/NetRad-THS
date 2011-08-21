@@ -17,8 +17,9 @@ const int updateIntervalInMinutes = 1;
 typedef struct
 {
   unsigned short addr;
-  unsigned short feedID;
+  unsigned long feedID;
   char devID[20];
+  char firmware_version[10];
 } device_t;
 
 typedef struct
@@ -49,6 +50,3 @@ const TubeModel tubeModel = SBM_20;
 // * For most geiger counter modules: FALLING
 // * Geiger Counter Twig by Seeed Studio: RISING
 const int interruptMode = RISING;
-
-
-
