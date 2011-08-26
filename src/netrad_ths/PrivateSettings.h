@@ -5,7 +5,7 @@
 #define MAX_FAILED_CONNS 3
 
 // Your API key (a public secure key is recommended)
-const char *apiKey = "soMsxkeoRjZnSkqCo87ox6wgLNZIgyJ63iOHEX0P59U";
+const char *apiKey = "Replace with your API key";
 
 // REPLACE WITH A PROPER MAC ADDRESS
 byte macAddress[] = {
