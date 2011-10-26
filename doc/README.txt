@@ -27,7 +27,7 @@ FREAKDUINO-CHIBI
 	http://freaklabs.org/index.php/Blog/Chibi/Assembling-and-Setting-Up-the-Freakduino-Chibi.html
 
 NETRAD
-	https://github.com/thinrope/NetRad-THS/blob/master/doc/NetRAD%20v1%20Assembly.pdf
+	http://github.com/thinrope/NetRad-THS/blob/master/doc/NetRAD-v1.0_assembly.pdf?raw=true
 SBM-20
 	http://www.gstube.com/data/2398/
 
