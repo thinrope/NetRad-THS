@@ -14,19 +14,23 @@ http://tokyohackerspace.org/en/blog/tokyo-hackerspacerdtn-geiger-shield-dev-hist
 | FREAKDUINO-CHIBI | ==== | NetRAD | ----  0   SBM-20   0
 --------------------      ----------        ~~~~~~~~~~~~
 
-The FREAKDUINO-CHIBI (MCU board) and NetRAD (shield) are open hardwere
+The FREAKDUINO-CHIBI (MCU board) and NetRAD (shield) are open hardware
 licensed under Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0):
 	http://creativecommons.org/licenses/by-sa/3.0/
 
 
-As of August 2011, we are using NETRAD-v1.0 boards and FREAKDUINO-CHIBI-v1.1
-boards combined with SBM-20 GM tubes.
+As of October 2011, we are using FREAKDUINO-CHIBI-v1.1 (ATmega328P @ 8MHz),
+NETRAD-v1.0 boards and SBM-20 GM tubes.
 
 FREAKDUINO-CHIBI
 	http://www.freaklabsstore.com/pub/FREAKDUINO-CHIBI%20v1.1%20Datasheet.pdf
 	http://freaklabs.org/index.php/Blog/Chibi/Assembling-and-Setting-Up-the-Freakduino-Chibi.html
 
+ATmega328P
+	http://www.atmel.com/dyn/products/product_card.asp?part_id=4198
+
 NETRAD
+	http://github.com/thinrope/NetRad-THS/blob/master/doc/NetRAD-v1.0.pdf?raw=true
 	http://github.com/thinrope/NetRad-THS/blob/master/doc/NetRAD-v1.0_assembly.pdf?raw=true
 SBM-20
 	http://www.gstube.com/data/2398/
