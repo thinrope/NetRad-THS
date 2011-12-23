@@ -150,8 +150,7 @@ ISR(CHB_RADIO_IRQ)
 
     CHB_ENTER_CRIT();
 
-    // check if the pin is high or low which indicates rising or falling edge
-    // interrupt
+    // get the pin's value to check whether it was a rising or falling edge.
     pinval = PINB & _BV(PINB6);
 
     // if it was a rising edge, then flag it as a real interrupt

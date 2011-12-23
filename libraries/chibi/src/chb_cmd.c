@@ -152,7 +152,8 @@ static void chb_cmd_handler()
     
     default:
         // check to make sure we're not overflowing the message buffer
-        if ((msg_ptr - msg) < MAX_MSG_SIZE)
+        // stay within the msg size - 1 to account for the trailing null
+        if ((msg_ptr - msg) < (MAX_MSG_SIZE - 1))
         {
             // normal character entered. add it to the buffer
             Serial.print(c);

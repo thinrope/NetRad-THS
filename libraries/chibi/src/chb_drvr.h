@@ -39,6 +39,12 @@
 #include "chibiUsrCfg.h"
 #include "types.h"
 
+#define CHB_CC1190_PRESENT      0       /// Set to 1 if CC1190 is being used
+#define CHB_CHINA               0       /// Support 780 MHz Chinese band        
+#define CHB_AT86RF212_VER_NUM   0x01    /// AT86RF212 version number            
+#define CHB_AT86RF212_PART_NUM  0x07    /// AT86RF212 part number               
+#define CHB_BPSK                0       /// BPSK modulation enable    
+
 #define CHB_SPI_CMD_RW      0xC0    /**<  Register Write (short mode). */
 #define CHB_SPI_CMD_RR      0x80    /**<  Register Read (short mode). */
 #define CHB_SPI_CMD_FW      0x60    /**<  Frame Transmit Mode (long mode). */
@@ -84,12 +90,22 @@ enum
     PHY_ED_LEVEL    = 0x07,
     PHY_CC_CCA      = 0x08,
     CCA_THRES       = 0x09,
+    RX_CTRL         = 0x0a,
+    SFD_VALUE       = 0x0b,
+    TRX_CTRL_2      = 0x0c,
+    ANT_DIV         = 0x0d,
     IRQ_MASK        = 0x0e,
     IRQ_STATUS      = 0x0f,
     VREG_CTRL       = 0x10,
     BATMON          = 0x11,
     XOSC_CTRL       = 0x12,
+    CC_CTRL_0       = 0x13,
+    CC_CTRL_1       = 0x14,
+    RX_SYN          = 0x15,
+    RF_CTRL_0       = 0x16,
+    XAH_CTRL_1      = 0x17,
     FTN_CTRL        = 0x18,
+    RF_CTRL_1       = 0x19,
     PLL_CF          = 0x1a,
     PLL_DCU         = 0x1b,
     PART_NUM        = 0x1c,
@@ -110,7 +126,8 @@ enum
     IEEE_ADDR_7     = 0x2b,
     XAH_CTRL_0      = 0x2c,
     CSMA_SEED_0     = 0x2d,
-    CSMA_SEED_1     = 0x2e
+    CSMA_SEED_1     = 0x2e,
+    CSMA_BE         = 0x2f
 };
 
 enum
@@ -120,11 +137,18 @@ enum
     CHB_MIN_BE_POS              = 6,
     CHB_CSMA_SEED1_POS          = 0,
     CHB_CCA_MODE_POS            = 5,
-    CHB_AUTO_CRC_POS            = 7,
+
+    CHB_AUTO_CRC_POS            = 7, // AT86RF23x
+//    CHB_AUTO_CRC_POS            = 5, // AT86RF212    
+
     CHB_TRX_END_POS             = 3,
     CHB_TRAC_STATUS_POS         = 5,
+    CHB_FVN_POS                 = 6,
+    CHB_OQPSK_TX_OFFSET         = 2,
+    CHB_BPSK_TX_OFFSET          = 3,
     CHB_MIN_FRAME_LENGTH        = 3,
-    CHB_MAX_FRAME_LENGTH        = 0x7f
+    CHB_MAX_FRAME_LENGTH        = 0x7f,
+    CHB_PA_EXT_EN_POS           = 7
 };
 
 enum{
@@ -166,6 +190,7 @@ enum
     CMD_NOP                  = 0,
     CMD_TX_START             = 2,
     CMD_FORCE_TRX_OFF        = 3,
+    CMD_FORCE_PLL_ON         = 4,
     CMD_RX_ON                = 6,
     CMD_TRX_OFF              = 8,
     CMD_PLL_ON               = 9,
@@ -188,8 +213,24 @@ enum
     TX_ARET_ON          = 25,
     RX_ON_NOCLK         = 28,
     RX_AACK_ON_NOCLK    = 29,
-    BUSY_RX_AACK_NOCLK  = 30
+    BUSY_RX_AACK_NOCLK  = 30,
+    TRANS_IN_PROG       = 31
 };
+
+// transceiver modes for AT86RF212
+enum
+{
+    OQPSK_868MHZ    = 0,
+    OQPSK_915MHZ    = 1,
+    OQPSK_780MHZ    = 2,
+    BPSK40_915MHZ   = 3
+};
+
+#if (CHB_BPSK == 1)
+    #define CHB_INIT_MODE BPSK40_915MHZ
+#else
+    #define CHB_INIT_MODE OQPSK_915MHZ    
+#endif
 
 /**************************************************************************/
 /*!

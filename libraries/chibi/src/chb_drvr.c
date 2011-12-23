@@ -369,6 +369,35 @@ void chb_sram_write(U8 addr, U8 len, U8 *data)
 
 /**************************************************************************/
 /*!
+    This function is only for the AT86RF212 868/915 MHz chips.
+    Set the channel mode, BPSK, OQPSK, etc...
+*/
+/**************************************************************************/
+void chb_set_mode(U8 mode)
+{
+    switch (mode)
+    {
+    case OQPSK_868MHZ:
+        chb_reg_read_mod_write(TRX_CTRL_2, 0x08, 0x3f);                 // 802.15.4-2006, channel page 2, channel 0 (868 MHz, Europe)
+        chb_reg_read_mod_write(RF_CTRL_0, CHB_OQPSK_TX_OFFSET, 0x3);    // this is according to table 7-16 in at86rf212 datasheet
+        break;
+    case OQPSK_915MHZ:
+        chb_reg_read_mod_write(TRX_CTRL_2, 0x0c, 0x3f);                 // 802.15.4-2006, channel page 2, channels 1-10 (915 MHz, US)
+        chb_reg_read_mod_write(RF_CTRL_0, CHB_OQPSK_TX_OFFSET, 0x3);    // this is according to table 7-16 in at86rf212 datasheet
+        break;
+    case OQPSK_780MHZ:
+        chb_reg_read_mod_write(TRX_CTRL_2, 0x1c, 0x3f);                 // 802.15.4-2006, channel page 5, channel 0-3 (780 MHz, China)
+        chb_reg_read_mod_write(RF_CTRL_0, CHB_OQPSK_TX_OFFSET, 0x3);    // this is according to table 7-16 in at86rf212 datasheet
+        break;
+    case BPSK40_915MHZ:
+        chb_reg_read_mod_write(TRX_CTRL_2, 0x00, 0x3f);                 // 802.15.4-2006, BPSK, 40 kbps
+        chb_reg_read_mod_write(RF_CTRL_0, CHB_BPSK_TX_OFFSET, 0x3);     // this is according to table 7-16 in at86rf212 datasheet
+        break;
+    }
+}
+
+/**************************************************************************/
+/*!
     Set the TX/RX state machine state. Some manual manipulation is required 
     for certain operations. Check the datasheet for more details on the state 
     machine and manipulations.
@@ -580,11 +609,22 @@ static void chb_radio_init()
     //chb_reg_write(CCA_THRES, CHB_CCA_ED_THRES);
     //chb_reg_read_mod_write(PHY_TX_PWR, CHB_TX_PWR, 0xf);
 
+
+// TEST FOR AT86RF212
+    // set the mode
+    chb_set_mode(CHB_INIT_MODE);
+// END TEST 
+
     // set the channel
     chb_set_channel(CHB_CHANNEL);
 
+#if (CHIBI_PROMISCUOUS == 0)
     // set autocrc mode
     chb_reg_read_mod_write(PHY_TX_PWR, 1 << CHB_AUTO_CRC_POS, 1 << CHB_AUTO_CRC_POS);
+
+    // for at86rf212
+    //chb_reg_read_mod_write(TRX_CTRL1, 1 << CHB_AUTO_CRC_POS, 1 << CHB_AUTO_CRC_POS);
+#endif
 
     // set transceiver's fsm state
     chb_set_state(RX_STATE);
@@ -664,7 +704,11 @@ void chb_sleep(U8 enb)
         // make the SLPTR pin an output
         CHB_SLPTR_DDIR |= _BV(CHB_SLPTR_PIN);
 
+        // we need to allow some time for the PLL to lock
+        chb_delay_us(TIME_SLEEP_TO_TRX_OFF);
+
         // Turn the transceiver back on
         chb_set_state(RX_STATE);
+
     }
 }
