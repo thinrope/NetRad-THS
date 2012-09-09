@@ -25,12 +25,10 @@ static device_t dev;
 // holds the control info for the device
 static devctrl_t ctrl;
 
-// The IP address of api.pachube.com
-IPAddress serverIP (173, 203, 98, 29);
-IPAddress localIP (10, 11, 12, 13);
-
-// The TCP client
 EthernetClient client;
+IPAddress serverIP (173, 203, 98, 29);		// api.pachube.com
+IPAddress localIP (10, 11, 12, 13);			// falback localIP address
+
 
 String csvData = "";
 
@@ -40,11 +38,9 @@ unsigned long updateIntervalInMillis = 0;
 // The next time to feed
 unsigned long nextExecuteMillis = 0;
 
-// Value to store counts per minute
-int count = 0;
-
 // Event flag signals when a geiger event has occurred
-volatile unsigned char eventFlag = 0;
+volatile unsigned char eventFlag = 0;		// FIXME: Can we get rid of eventFlag and use counts>0?
+int counts_per_sample;
 
 // The last connection time to disconnect from the server
 // after uploaded feeds
@@ -59,8 +55,7 @@ int pinLED = 7;		// pin number of event LED
 int resetPin = A1;
 int radioSelect = A3;
 
-// this is for printf
-static FILE uartout = {0};
+static FILE uartout = {0};		// needed for printf
 
 // function prototypes {{{1
 // ----------------------------------------------------------------------------
@@ -210,7 +205,7 @@ void loop()
 	// poll the command line for any input
 	chibiCmdPoll();
 
-	// Periodically call this method to maintain your DHCP lease
+	// maintain the DHCP lease, if needed
 	Ethernet.maintain();
 
 	// Echo received strings to a host PC
@@ -240,11 +235,11 @@ void loop()
 		delay(20);
 		digitalWrite(pinLED, LOW);
 
-		noTone(pinSpkr);				// turn off the speaker pulse
+		noTone(pinSpkr);				// turn off the speaker
 	}
 
-	// check if its time to update server. elapsedTime function will take into account
-	// counter rollover.
+	// check if its time to update server.
+	// elapsedTime function will take into account counter rollover.
 	if (elapsedTime(lastConnectionTime) < updateIntervalInMillis)
 	{
 		return;
@@ -253,10 +248,10 @@ void loop()
 	Serial.println();
 	Serial.println("Updating...");
 
-	float countsPerMinute = (float)count / (float)updateIntervalInMinutes;
-	count = 0;
+	float CPM = (float)counts_per_sample / (float)updateIntervalInMinutes;
+	counts_per_sample = 0;
 
-	updateDataStream(countsPerMinute);
+	updateDataStream(CPM);
 }
 
 // ----------------------------------------------------------------------------
@@ -274,36 +269,8 @@ void loop()
 /**************************************************************************/
 void onPulse()
 {
-	count++;
+	counts_per_sample++;
 	eventFlag = 1;
-}
-
-/**************************************************************************/
-/*!
-// Since "+" operator doesn't support float values,
-// convert a float value to a fixed point value
-*/
-/**************************************************************************/
-void appendFloatValueAsString(String& outString,float value)
-{
-	int integerPortion = (int)value;
-	int fractionalPortion = (value - integerPortion + 0.0005) * 1000;
-
-	outString += integerPortion;
-	outString += ".";
-
-	if (fractionalPortion < 10)
-	{
-		// e.g. 9 > "00" + "9" = "009"
-		outString += "00";
-	}
-	else if (fractionalPortion < 100)
-	{
-		// e.g. 99 > "0" + "99" = "099"
-		outString += "0";
-	}
-
-	outString += fractionalPortion;
 }
 
 /**************************************************************************/
@@ -311,7 +278,7 @@ void appendFloatValueAsString(String& outString,float value)
 //  Send data to server
 */
 /**************************************************************************/
-void updateDataStream(float countsPerMinute) {
+void updateDataStream(float CPM) {
 //	if (client.connected())
 //	{
 //		Serial.println("updateDataStream():: Disconnecting.");
@@ -342,15 +309,14 @@ void updateDataStream(float countsPerMinute) {
 	}
 
 	// Convert from cpm to µSv/h with the pre-defined coefficient
-	float microsievertPerHour = countsPerMinute * conversionCoefficient;
+	float DRE = CPM * conversionCoefficient;
 
 	csvData = "0,";
-	appendFloatValueAsString(csvData, countsPerMinute);
+	appendFloatValueAsString(csvData, CPM);
 	csvData += "\n1,";
-	appendFloatValueAsString(csvData, microsievertPerHour);
+	appendFloatValueAsString(csvData, DRE);
 	csvData += "\n13,";
 	csvData += millis() / 1000;
-	//appendFloatValueAsString(csvData, (float) millis());
 
 	Serial.println("updateDataStream():: Sending the following data:");
 	Serial.println(csvData);
@@ -371,7 +337,7 @@ void updateDataStream(float countsPerMinute) {
 }
 
 /**************************************************************************/
-// calculate elapsed time. this takes into account rollover.
+// calculate elapsed time, taking into account rollovers
 /**************************************************************************/
 unsigned long elapsedTime(unsigned long startTime)
 {
@@ -386,6 +352,43 @@ unsigned long elapsedTime(unsigned long startTime)
 		return (ULONG_MAX - (startTime - stopTime));
 	}
 }
+
+// implement the printf function from within arduino
+/**************************************************************************/
+static int uart_putchar (char c, FILE *stream)
+{
+		Serial.write(c) ;
+		return 0 ;
+}
+
+/**************************************************************************/
+/*!
+// Since "+" operator doesn't support float values,
+// convert a float value to a fixed point value
+*/
+/**************************************************************************/
+void appendFloatValueAsString(String& outString,float value)
+{
+	int integerPortion = (int)value;
+	int fractionalPortion = (value - integerPortion + 0.0005) * 1000;
+
+	outString += integerPortion;
+	outString += ".";
+
+	if (fractionalPortion < 10)			// e.g. 9 > "00" + "9" = "009"
+	{
+		outString += "00";
+	}
+	else if (fractionalPortion < 100)	// e.g. 99 > "0" + "99" = "099"
+	{
+		outString += "0";
+	}
+
+	outString += fractionalPortion;
+}
+
+// chibiArduino specific CLI {{{2
+// ----------------------------------------------------------------------------
 
 /**************************************************************************/
 // Get address
@@ -479,16 +482,8 @@ void cmdHelp(int arg_cnt, char **args)
 	printf_P(PSTR("\tsetdev:\tsets the device ID (0 .. 10 chars)\n"));
 	printf_P(PSTR("\tgetdev:\tshows the device ID\n"));
 }
-
-
-// This is to implement the printf function from within arduino
-/**************************************************************************/
-static int uart_putchar (char c, FILE *stream)
-{
-		Serial.write(c) ;
-		return 0 ;
-}
-
+// ----------------------------------------------------------------------------
+// }}}2
 // ----------------------------------------------------------------------------
 // }}}1
 
