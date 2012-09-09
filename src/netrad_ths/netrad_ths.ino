@@ -62,6 +62,21 @@ int radioSelect = A3;
 // this is for printf
 static FILE uartout = {0};
 
+static int uart_putchar (char, FILE *);
+void onPulse(void);
+unsigned long elapsedTime(unsigned long);
+void appendFloatValueAsString(String& ,float);
+void updateDataStream(float);
+void GetFirmwareVersion(void);
+void cmdGetMAC(int, char **);
+void cmdSetMAC(int, char **);
+void cmdGetFeedID(int, char **);
+void cmdSetFeedID(int, char **);
+void cmdGetDevID(int, char **);
+void cmdSetDevID(int, char **);
+void cmdStat(int,  char **);
+void cmdHelp(int,  char **);
+
 void setup() {
     byte i, *dev_ptr;
 
@@ -87,13 +102,14 @@ void setup() {
     digitalWrite(resetPin, HIGH);
     
     // add in the commands to the command table
-    chibiCmdAdd("getaddr", cmdGetAddr);  
-    chibiCmdAdd("setaddr", cmdSetAddr);  
+    chibiCmdAdd("getmac", cmdGetMAC);  
+    chibiCmdAdd("setmac", cmdSetMAC);  
     chibiCmdAdd("getfeed", cmdGetFeedID);  
     chibiCmdAdd("setfeed", cmdSetFeedID);  
     chibiCmdAdd("getdev", cmdGetDevID);  
     chibiCmdAdd("setdev", cmdSetDevID);  
     chibiCmdAdd("stat", cmdStat);   
+    chibiCmdAdd("help", cmdHelp);   
     
     // get the device info
     dev_ptr = (byte *)&dev;
@@ -167,6 +183,8 @@ void setup() {
 
     // kick the dog
     wdt_reset();
+    Serial.println("setup(): done.");
+    Serial.println(SEPARATOR);
 }
 
 void loop() 
@@ -351,7 +369,7 @@ unsigned long elapsedTime(unsigned long startTime)
 /**************************************************************************/
 // Get address
 /**************************************************************************/
-void cmdGetAddr(int arg_cnt, char **args)
+void cmdGetMAC(int arg_cnt, char **args)
 {
   printf_P(PSTR("MAC_address:\t%04X\n"), dev.addr);
 }
@@ -359,7 +377,7 @@ void cmdGetAddr(int arg_cnt, char **args)
 /**************************************************************************/
 // Set address
 /**************************************************************************/
-void cmdSetAddr(int arg_cnt, char **args)
+void cmdSetMAC(int arg_cnt, char **args)
 {
   dev.addr = strtol(args[1], NULL, 16);
   eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
@@ -421,10 +439,24 @@ void cmdSetDevID(int arg_cnt, char **args)
 /**************************************************************************/
 void cmdStat(int arg_cnt, char **args)
 {
-  cmdGetAddr(arg_cnt, args);
+  cmdGetMAC(arg_cnt, args);
   cmdGetFeedID(arg_cnt, args);
   cmdGetDevID(arg_cnt, args);
   GetFirmwareVersion();
+}
+
+/**************************************************************************/
+// Print some help
+/**************************************************************************/
+void cmdHelp(int arg_cnt, char **args)
+{
+  printf_P(PSTR("Use the following commands:\n"));
+  printf_P(PSTR("\tgetmac:\tshows the chibi wireless MAC address.\n"));
+  printf_P(PSTR("\tsetmac:\tsets the chibi wireless MAC address(0 .. FFFF).\n"));
+  printf_P(PSTR("\tsetfeed:\tsets the COSM feed ID\n"));
+  printf_P(PSTR("\tgetfeed:\tshows the COSM feed ID\n"));
+  printf_P(PSTR("\tsetdev:\tsets the device ID (0 .. 10 chars)\n"));
+  printf_P(PSTR("\tgetdev:\tshows the device ID\n"));
 }
 
 
@@ -435,3 +467,4 @@ static int uart_putchar (char c, FILE *stream)
     Serial.write(c) ;
     return 0 ;
 }
+
