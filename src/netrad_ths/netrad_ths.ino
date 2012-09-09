@@ -17,7 +17,7 @@
 #define SEPARATOR  "-----------------------------------------------------"
 #define DEBUG  0    
 
-static char VERSION[] = "1.0.2";
+static char VERSION[] = "1.1.0";
 
 // this holds the info for the device
 static device_t dev;
@@ -291,12 +291,11 @@ void appendFloatValueAsString(String& outString,float value) {
 */
 /**************************************************************************/
 void updateDataStream(float countsPerMinute) {
-  if (client.connected()) 
-  {
-    Serial.println();
-    Serial.println("Disconnecting.");
-    client.stop();
-  }
+//  if (client.connected()) 
+//  {
+//    Serial.println("updateDataStream():: Disconnecting.");
+//    client.stop();
+//  }
 
   // Try to connect to the server
   Serial.println();
