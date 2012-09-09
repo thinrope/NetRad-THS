@@ -2,10 +2,6 @@
 // * An Arduino Ethernet Shield
 // * D3: The output pin of the Geiger counter (active low)
 //
-// Requirements:
-// EthernetDHCP
-// http://gkaindl.com/software/arduino-ethernet
-//
 // Reference:
 // * http://www.sparkfun.com/products/9848
 
@@ -13,7 +9,6 @@
 #include <Ethernet.h>
 #include <avr/eeprom.h>
 #include <chibi.h>
-#include <EthernetDHCP.h>
 #include <limits.h>
 #include <avr/wdt.h>
 #include <stdint.h>
@@ -28,11 +23,11 @@ static device_t dev;
 static devctrl_t ctrl;
 
 // The IP address of api.pachube.com
-byte serverIpAddress[] = {
-  173, 203, 98, 29 };
+IPAddress serverIP (173, 203, 98, 29);
+IPAddress localIP (10, 11, 12, 13);
 
 // The TCP client
-Client client(serverIpAddress, 80);
+EthernetClient client;
 
 String csvData = "";
 
@@ -146,20 +141,15 @@ void setup() {
     
     // Initiate a DHCP session
     Serial.println("Getting an IP address...");
-    EthernetDHCP.begin(macAddress);
+      if (Ethernet.begin(macAddress) == 0)
+      {
+      Serial.println("Failed to configure Ethernet using DHCP");
+      // DHCP failed, so use a fixed IP address:
+      Ethernet.begin(macAddress, localIP);
+      }
     
-    // We now have a DHCP lease, so we print out some information
-    const byte* ipAddr = EthernetDHCP.ipAddress();
-    
-    Serial.print("IP address:\t");
-    Serial.print(ipAddr[0], DEC);
-    Serial.print(".");
-    Serial.print(ipAddr[1], DEC);
-    Serial.print(".");
-    Serial.print(ipAddr[2], DEC);
-    Serial.print(".");
-    Serial.print(ipAddr[3], DEC);
-    Serial.println();
+    Serial.print("local_IP:\t");
+    Serial.println(Ethernet.localIP());
     
     // Attach an interrupt to the digital pin and start counting
     //
@@ -190,7 +180,7 @@ void loop()
     chibiCmdPoll();
   
     // Periodically call this method to maintain your DHCP lease
-    EthernetDHCP.maintain();
+    Ethernet.maintain();
     
     // Echo received strings to a host PC
     if (client.available()) {
@@ -288,8 +278,8 @@ void updateDataStream(float countsPerMinute) {
 
   // Try to connect to the server
   Serial.println();
-  Serial.print("Connecting to Pachube...");
-  if (client.connect()) 
+  Serial.println("updateDataStream():: Connecting to cosm.com ...");
+  if (client.connect(serverIP, 80)) 
   {
     Serial.println("Connected");
     lastConnectionTime = millis();
