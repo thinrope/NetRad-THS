@@ -1,4 +1,4 @@
-// NOTE
+// NOTE:
 // Before uploading to your Arduino board,
 // please replace with your own settings
 
@@ -8,8 +8,7 @@
 const char *apiKey = "soMsxkeoRjZnSkqCo87ox6wgLNZIgyJ63iOHEX0P59U";
 
 // REPLACE WITH A PROPER MAC ADDRESS
-byte macAddress[] = {
-  0xDE, 0xAD, 0xBE, 0xEF, 0xBA, 0xBE };
+byte macAddress[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xBA, 0xBE };
 
 // Update interval in minutes
 const int updateIntervalInMinutes = 1;
@@ -29,10 +28,10 @@ typedef struct
 } devctrl_t;
 
 enum TubeModel {
-  LND_712, // LND
-  SBM_20, // GSTube
-  J408GAMMA, // North Optic
-  J306BETA, // North Optic
+  LND_712,
+  SBM_20,
+  J408GAMMA,
+  J306BETA,
   INSPECTOR,
   CRM100
 };
@@ -50,3 +49,5 @@ const TubeModel tubeModel = SBM_20;
 // * For most geiger counter modules: FALLING
 // * Geiger Counter Twig by Seeed Studio: RISING
 const int interruptMode = RISING;
+
+// vim: set tabstop=4 shiftwidth=4 syntax=c foldmethod=marker :
