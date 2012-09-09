@@ -79,6 +79,8 @@ void cmdHelp(int,  char **);
 
 void setup() {
     byte i, *dev_ptr;
+	pinMode(pinSpkr, OUTPUT);
+	pinMode(pinLED, OUTPUT);
 
     // fill in the UART file descriptor with pointer to writer.
     fdev_setup_stream (&uartout, uart_putchar, NULL, _FDEV_SETUP_WRITE);
@@ -151,10 +153,9 @@ void setup() {
       break;
     }
     
-    tone(pinSpkr, 500); delay(500); noTone(pinSpkr);
-    tone(pinSpkr, 1500); delay(500); noTone(pinSpkr);
-    tone(pinSpkr, 500); delay(500); noTone(pinSpkr);
-
+    tone(pinSpkr, 500); delay(100); noTone(pinSpkr);
+    tone(pinSpkr, 1500); delay(50); noTone(pinSpkr);
+    tone(pinSpkr, 500); delay(100); noTone(pinSpkr);
 
     cmdStat(0,0);
     
