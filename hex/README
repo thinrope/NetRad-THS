@@ -1,0 +1,8 @@
+About the hex files:
+
+For now these are compiled for ATMega328P (Akiba's chibiArduino boards)
+
+Use the following (under Linux) to upload it:
+
+/usr/bin/avrdude -q -V -p atmega328p -c arduino -b 57600 -P -U flash:w:netrad_ths-1.0.13.hex:i
+
