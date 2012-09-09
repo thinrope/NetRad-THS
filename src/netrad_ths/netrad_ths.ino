@@ -12,7 +12,8 @@
 #include <limits.h>
 #include <avr/wdt.h>
 #include <stdint.h>
-#include "PrivateSettings.h"
+#include "board_specific_settings.h"
+#include "netrad_ths.h"
 
 #define SEPARATOR	"-----------------------------------------------------"
 #define DEBUG		0
@@ -56,25 +57,6 @@ int resetPin = A1;
 int radioSelect = A3;
 
 static FILE uartout = {0};		// needed for printf
-
-// function prototypes {{{1
-// ----------------------------------------------------------------------------
-static int uart_putchar (char, FILE *);
-void onPulse(void);
-unsigned long elapsedTime(unsigned long);
-void appendFloatValueAsString(String& ,float);
-void updateDataStream(float);
-void GetFirmwareVersion(void);
-void cmdGetMAC(int, char **);
-void cmdSetMAC(int, char **);
-void cmdGetFeedID(int, char **);
-void cmdSetFeedID(int, char **);
-void cmdGetDevID(int, char **);
-void cmdSetDevID(int, char **);
-void cmdStat(int, char **);
-void cmdHelp(int, char **);
-// ----------------------------------------------------------------------------
-// }}}1
 
 // main program (setup/loop) {{{1
 // ----------------------------------------------------------------------------
