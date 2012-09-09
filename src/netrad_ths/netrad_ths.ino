@@ -62,6 +62,8 @@ int radioSelect = A3;
 // this is for printf
 static FILE uartout = {0};
 
+// function prototypes {{{1
+// ----------------------------------------------------------------------------
 static int uart_putchar (char, FILE *);
 void onPulse(void);
 unsigned long elapsedTime(unsigned long);
@@ -76,6 +78,11 @@ void cmdGetDevID(int, char **);
 void cmdSetDevID(int, char **);
 void cmdStat(int, char **);
 void cmdHelp(int, char **);
+// ----------------------------------------------------------------------------
+// }}}1
+
+// main program (setup/loop) {{{1
+// ----------------------------------------------------------------------------
 
 void setup()
 {
@@ -252,7 +259,13 @@ void loop()
 	updateDataStream(countsPerMinute);
 }
 
-/**************************************************************************/
+// ----------------------------------------------------------------------------
+// }}}1
+
+// utility functions {{{1
+// ----------------------------------------------------------------------------
+
+//**************************************************************************/
 /*!
 //  On each falling edge of the Geiger counter's output,
 //  increment the counter and signal an event. The event
@@ -476,4 +489,7 @@ static int uart_putchar (char c, FILE *stream)
 		return 0 ;
 }
 
-// vim: set tabstop=4 shiftwidth=4 syntax=c :
+// ----------------------------------------------------------------------------
+// }}}1
+
+// vim: set tabstop=4 shiftwidth=4 syntax=c foldmethod=marker :
