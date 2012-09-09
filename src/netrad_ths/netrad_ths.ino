@@ -14,6 +14,9 @@
 #include <stdint.h>
 #include "PrivateSettings.h"
 
+#define SEPARATOR  "-----------------------------------------------------"
+#define DEBUG  0    
+
 static char VERSION[] = "1.0.2";
 
 // this holds the info for the device
@@ -281,7 +284,7 @@ void updateDataStream(float countsPerMinute) {
   Serial.println("updateDataStream():: Connecting to cosm.com ...");
   if (client.connect(serverIP, 80)) 
   {
-    Serial.println("Connected");
+    Serial.println("updateDataStream():: Connected");
     lastConnectionTime = millis();
 
     // clear the connection fail count if we have at least one successful connection
@@ -302,15 +305,18 @@ void updateDataStream(float countsPerMinute) {
   // Convert from cpm to µSv/h with the pre-defined coefficient
   float microsievertPerHour = countsPerMinute * conversionCoefficient;
 
-  csvData = "";
-  csvData += "0,";
+  csvData = "0,";
   appendFloatValueAsString(csvData, countsPerMinute);
-  csvData += "\n";
-  csvData += "1,";
+  csvData += "\n1,";
   appendFloatValueAsString(csvData, microsievertPerHour);
+  csvData += "\n13,";
+  csvData += millis() / 1000;
+  //appendFloatValueAsString(csvData, (float) millis());
 
+  Serial.println("updateDataStream():: Sending the following data:");
   Serial.println(csvData);
-
+  Serial.println(SEPARATOR);
+  
   client.print("PUT /v2/feeds/");
   client.print(dev.feedID);
   client.println(" HTTP/1.1");
