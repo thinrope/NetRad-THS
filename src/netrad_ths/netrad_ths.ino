@@ -454,12 +454,12 @@ void cmdStat(int arg_cnt, char **args)
 void cmdHelp(int arg_cnt, char **args)
 {
 	printf_P(PSTR("Use the following commands:\n"));
-	printf_P(PSTR("\tgetmac:\tshows the chibi wireless MAC address.\n"));
-	printf_P(PSTR("\tsetmac:\tsets the chibi wireless MAC address(0 .. FFFF).\n"));
+	printf_P(PSTR("\tgetmac:\t\tshows the chibi wireless MAC address.\n"));
+	printf_P(PSTR("\tsetmac:\t\tsets the chibi wireless MAC address(0 .. FFFF).\n"));
 	printf_P(PSTR("\tsetfeed:\tsets the COSM feed ID\n"));
 	printf_P(PSTR("\tgetfeed:\tshows the COSM feed ID\n"));
-	printf_P(PSTR("\tsetdev:\tsets the device ID (0 .. 10 chars)\n"));
-	printf_P(PSTR("\tgetdev:\tshows the device ID\n"));
+	printf_P(PSTR("\tsetdev:\t\tsets the device ID (0 .. 10 chars)\n"));
+	printf_P(PSTR("\tgetdev:\t\tshows the device ID\n"));
 }
 // ----------------------------------------------------------------------------
 // }}}2
