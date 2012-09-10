@@ -284,7 +284,7 @@ void updateDataStream(float CPM) {
 		{
 				ctrl.state = RESET;
 		}
-		printf("Failed. Retries left: %d.\r\n", MAX_FAILED_CONNS - ctrl.conn_fail_cnt);
+		printf("Failed. Retries left: %d.\n", MAX_FAILED_CONNS - ctrl.conn_fail_cnt);
 		lastConnectionTime = millis();
 		return;
 	}
@@ -376,7 +376,7 @@ void appendFloatValueAsString(String& outString,float value)
 /**************************************************************************/
 void cmdGetMAC(int arg_cnt, char **args)
 {
-	printf_P(PSTR("MAC_address:\t%04X\r\n"), dev.addr);
+	printf_P(PSTR("MAC_address:\t%04X\n"), dev.addr);
 }
 
 /**************************************************************************/
@@ -386,7 +386,7 @@ void cmdSetMAC(int arg_cnt, char **args)
 {
 	dev.addr = strtol(args[1], NULL, 16);
 	eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-	printf_P(PSTR("MAC_address set to %04X\r\n"), dev.addr);
+	printf_P(PSTR("MAC_address set to %04X\n"), dev.addr);
 }
 
 /**************************************************************************/
@@ -394,7 +394,7 @@ void cmdSetMAC(int arg_cnt, char **args)
 /**************************************************************************/
 void cmdGetFeedID(int arg_cnt, char **args)
 {
-	printf_P(PSTR("Feed_ID:\t%u\r\n"), dev.feedID);
+	printf_P(PSTR("Feed_ID:\t%u\n"), dev.feedID);
 }
 
 /**************************************************************************/
@@ -404,12 +404,12 @@ void cmdSetFeedID(int arg_cnt, char **args)
 {
 	dev.feedID = strtol(args[1], NULL, 10);
 	eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-	printf_P(PSTR("Feed ID set to %u\r\n"), dev.feedID);
+	printf_P(PSTR("Feed ID set to %u\n"), dev.feedID);
 }
 
 void GetFirmwareVersion()
 {
-	printf_P(PSTR("Firmware_ver:\t%s\r\n"), VERSION);
+	printf_P(PSTR("Firmware_ver:\t%s\n"), VERSION);
 }
 
 /**************************************************************************/
@@ -417,7 +417,7 @@ void GetFirmwareVersion()
 /**************************************************************************/
 void cmdGetDevID(int arg_cnt, char **args)
 {
-	printf_P(PSTR("Device_ID:\t%s\r\n"), dev.devID);
+	printf_P(PSTR("Device_ID:\t%s\n"), dev.devID);
 }
 
 /**************************************************************************/
@@ -429,11 +429,11 @@ void cmdSetDevID(int arg_cnt, char **args)
 	{
 		memcpy(dev.devID, args[1], strlen(args[1]) + 1);
 		eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-		printf_P(PSTR("Device ID set to %s\r\n"), dev.devID);
+		printf_P(PSTR("Device ID set to %s\n"), dev.devID);
 	}
 	else
 	{
-		printf_P(PSTR("ERROR - Too many characters in Device ID. Must be under 10 characters.\r\n"));
+		printf_P(PSTR("ERROR - Too many characters in Device ID. Must be under 10 characters.\n"));
 	}
 }
 
@@ -453,13 +453,13 @@ void cmdStat(int arg_cnt, char **args)
 /**************************************************************************/
 void cmdHelp(int arg_cnt, char **args)
 {
-	printf_P(PSTR("Use the following commands:\r\n"));
-	printf_P(PSTR("\tgetmac:\tshows the chibi wireless MAC address.\r\n"));
-	printf_P(PSTR("\tsetmac:\tsets the chibi wireless MAC address(0 .. FFFF).\r\n"));
-	printf_P(PSTR("\tsetfeed:\tsets the COSM feed ID\r\n"));
-	printf_P(PSTR("\tgetfeed:\tshows the COSM feed ID\r\n"));
-	printf_P(PSTR("\tsetdev:\tsets the device ID (0 .. 10 chars)\r\n"));
-	printf_P(PSTR("\tgetdev:\tshows the device ID\r\n"));
+	printf_P(PSTR("Use the following commands:\n"));
+	printf_P(PSTR("\tgetmac:\tshows the chibi wireless MAC address.\n"));
+	printf_P(PSTR("\tsetmac:\tsets the chibi wireless MAC address(0 .. FFFF).\n"));
+	printf_P(PSTR("\tsetfeed:\tsets the COSM feed ID\n"));
+	printf_P(PSTR("\tgetfeed:\tshows the COSM feed ID\n"));
+	printf_P(PSTR("\tsetdev:\tsets the device ID (0 .. 10 chars)\n"));
+	printf_P(PSTR("\tgetdev:\tshows the device ID\n"));
 }
 // ----------------------------------------------------------------------------
 // }}}2
