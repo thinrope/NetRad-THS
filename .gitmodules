@@ -1,3 +1,6 @@
 [submodule "libraries/chibi"]
 	path = libraries/chibi
 	url = https://github.com/freaklabs/chibiArduino.git
+[submodule "tools/Arduino-Makefile"]
+	path = tools/Arduino-Makefile
+	url = https://github.com/mjoldfield/Arduino-Makefile.git
