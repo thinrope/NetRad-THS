@@ -1,0 +1,3 @@
+[submodule "libraries/chibi"]
+	path = libraries/chibi
+	url = https://github.com/freaklabs/chibiArduino.git
