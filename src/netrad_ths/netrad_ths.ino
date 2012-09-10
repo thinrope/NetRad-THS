@@ -63,7 +63,7 @@ static FILE uartout = {0};		// needed for printf
 
 void setup()
 {
-	byte i, *dev_ptr;
+	byte *dev_ptr;
 	pinMode(pinSpkr, OUTPUT);
 	pinMode(pinLED, OUTPUT);
 
@@ -190,19 +190,21 @@ void loop()
 	// maintain the DHCP lease, if needed
 	Ethernet.maintain();
 
-	// Echo received strings to a host PC
-	if (client.available())
+	if (DEBUG)
 	{
-		char c = client.read();
-		Serial.print(c);
-	}
+		// Echo received strings to a host PC
+		if (client.available())
+		{
+			char c = client.read();
+			Serial.print(c);
+		}
 
-	unsigned long now = millis();
-	if (client.connected() && (elapsedTime(lastConnectionTime) > 10000))
-	{
-		Serial.println();
-		Serial.println("Disconnecting.");
-		client.stop();
+		if (client.connected() && (elapsedTime(lastConnectionTime) > 10000))
+		{
+			Serial.println();
+			Serial.println("Disconnecting.");
+			client.stop();
+		}
 	}
 
 	// Add any geiger event handling code here
@@ -226,9 +228,6 @@ void loop()
 	{
 		return;
 	}
-
-	Serial.println();
-	Serial.println("Updating...");
 
 	float CPM = (float)counts_per_sample / (float)updateIntervalInMinutes;
 	counts_per_sample = 0;
@@ -426,8 +425,6 @@ void cmdGetDevID(int arg_cnt, char **args)
 /**************************************************************************/
 void cmdSetDevID(int arg_cnt, char **args)
 {
-	byte i;
-
 	if (strlen(args[1]) < 10)
 	{
 		memcpy(dev.devID, args[1], strlen(args[1]) + 1);
