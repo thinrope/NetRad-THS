@@ -1,0 +1,9 @@
+#!/usr/bin/gnuplot
+
+reset
+set key autotitle columnhead
+
+
+plot "<./average.pl 5 72 < sample_data/data2.out" u 1:7 w lines, "" u 1:8 w lines, "" u 1:9 w lines, "" u 1:10 w lines
+pause -1
+
