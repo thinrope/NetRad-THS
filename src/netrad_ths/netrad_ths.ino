@@ -345,13 +345,16 @@ static int uart_putchar (char c, FILE *stream)
 /**************************************************************************/
 /*!
 // Since "+" operator doesn't support float values,
-// convert a float value to a fixed point value
+// convert a float value to a fixed point value "%+.3f"
 */
 /**************************************************************************/
 void appendFloatValueAsString(String& outString,float value)
 {
-	int integerPortion = (int)value;
-	int fractionalPortion = (value - integerPortion + 0.0005) * 1000;
+
+	// FIXME: throw error on value > 4,294,967,295
+
+	uint32_t integerPortion = (uint32_t)value;
+	uint32_t fractionalPortion = (value - integerPortion + 0.0005) * 1000;
 
 	outString += integerPortion;
 	outString += ".";
