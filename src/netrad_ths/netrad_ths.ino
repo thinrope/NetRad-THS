@@ -18,7 +18,7 @@
 #define SEPARATOR	"-----------------------------------------------------"
 #define DEBUG		0
 
-static char VERSION[] = "1.1.0";
+static char VERSION[] = "1.1.1";
 
 // this holds the info for the device
 static device_t dev;
