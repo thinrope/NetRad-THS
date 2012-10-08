@@ -7,7 +7,7 @@ ARDUINO_PORT = /dev/ttyUSB0
 
 # firmware settings
 MONITOR_BAUDRATE = 57600
-ARDUINO_LIBS = SPI Ethernet Ethernet/utility chibi 
+ARDUINO_LIBS = chibi 
 
 # default setting for kalin@Gentoo
 MONITOR_CMD = screen -L
@@ -15,4 +15,11 @@ ARDUINO_DIR = /usr/share/arduino
 ARDMK_DIR = $(HOME)/sketchbook/NetRad-THS/tools/Arduino-Makefile
 AVR_TOOLS_DIR = /usr
 
+CXXFLAGS = -funroll-loops
 include ${ARDMK_DIR}/arduino-mk/Arduino.mk
+
+resetlog:
+	rm -f screenlog.?
+
+distclean:	resetlog
+	rm -rf build-cli/

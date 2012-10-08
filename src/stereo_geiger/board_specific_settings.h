@@ -1,53 +1,25 @@
-// NOTE:
-// Before uploading to your Arduino board,
-// please replace with your own settings
+//
+// XXX ATMega328P: 31 KB Flash (1KB bootloader), 2KB SRAM, 1KB EEPROM
+// TODO: Use PROGMEM: http://arduino.cc/en/Reference/PROGMEM
+//
 
-#define MAX_FAILED_CONNS 3
 
-// Your API key (a public secure key is recommended)
-const char *apiKey = "soMsxkeoRjZnSkqCo87ox6wgLNZIgyJ63iOHEX0P59U";
-
-// REPLACE WITH A PROPER MAC ADDRESS
-byte macAddress[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xBA, 0xBE };
-
-// Update interval in minutes
-const int updateIntervalInMinutes = 1;
-
-typedef struct
+// description of a GM tube
+struct GM_tube
 {
-  unsigned short addr;
-  unsigned long feedID;
-  char devID[20];
-  char firmware_version[10];
-} device_t;
-
-typedef struct
-{
-    unsigned char state;
-    unsigned char conn_fail_cnt;
-} devctrl_t;
-
-enum TubeModel {
-  LND_712,
-  SBM_20,
-  J408GAMMA,
-  J306BETA,
-  INSPECTOR,
-  CRM100
+  char name[16];
+  int voltage;
+  float own_background;
+  float dead_time;
+  float Cs137;					// CPM * (1 / coeff) = µSv/h
 };
 
-enum states
+extern const GM_tube GM_tubes[3] = 
 {
-    NORMAL = 0,
-    RESET = 1
+	//	name	 V		dead	own		Cs137	
+	{"LND-712",	500,	0.0,	60.0,	142.85},
+	{"SBM-20",	500,	0.0,	60.0,	150.00},
+	{"SI22G",	380,	0.0,	75.0,	633.00}
 };
-
-// Tube model
-const TubeModel tubeModel = SBM_20;
-
-// Interrupt mode:
-// * For most geiger counter modules: FALLING
-// * Geiger Counter Twig by Seeed Studio: RISING
-const int interruptMode = RISING;
 
 // vim: set tabstop=4 shiftwidth=4 syntax=c foldmethod=marker :
