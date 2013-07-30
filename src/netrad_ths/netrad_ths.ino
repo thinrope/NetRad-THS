@@ -27,7 +27,7 @@ static device_t dev;
 static devctrl_t ctrl;
 
 EthernetClient client;
-IPAddress serverIP (173, 203, 98, 29);		// api.pachube.com
+IPAddress serverIP (50, 112, 106, 155);		// api.safecast.org
 IPAddress localIP (10, 11, 12, 13);			// falback localIP address
 
 
@@ -292,24 +292,25 @@ void updateDataStream(float CPM) {
 	// Convert from cpm to µSv/h with the pre-defined coefficient
 	float DRE = CPM * conversionCoefficient;
 
-	csvData = "0,";
-	appendFloatValueAsString(csvData, CPM);
-	csvData += "\n1,";
-	appendFloatValueAsString(csvData, DRE);
-	csvData += "\n13,";
-	csvData += millis() / 1000;
+	csvData = "device_id=";
+        csvData += dev.devID;
+	csvData += "&user_id=";        
+        csvData += dev.feedID;
+	csvData += "&unit=cpm&value=";
+        appendFloatValueAsString(csvData, CPM);
+	csvData += "&latitude=0&longitude=0";
 
 	Serial.println("updateDataStream():: Sending the following data:");
 	Serial.println(csvData);
 	Serial.println(SEPARATOR);
 
-	client.print("PUT /v2/feeds/");
-	client.print(dev.feedID);
+	client.print("POST /measurements.json?api_key=");
+        client.print(apiKey);
+	client.print("&");
+        client.print(csvData);
 	client.println(" HTTP/1.1");
 	client.println("User-Agent: Arduino");
-	client.println("Host: api.pachube.com");
-	client.print("X-PachubeApiKey: ");
-	client.println(apiKey);
+	client.println("Host: api.safecast.org");
 	client.print("Content-Length: ");
 	client.println(csvData.length());
 	client.println("Content-Type: text/csv");

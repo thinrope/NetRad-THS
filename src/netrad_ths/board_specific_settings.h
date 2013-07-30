@@ -5,7 +5,7 @@
 #define MAX_FAILED_CONNS 3
 
 // Your API key (a public secure key is recommended)
-const char *apiKey = "soMsxkeoRjZnSkqCo87ox6wgLNZIgyJ63iOHEX0P59U";
+const char *apiKey = "pcaztEazJwDTzzGK9Nsv";
 
 // REPLACE WITH A PROPER MAC ADDRESS
 byte macAddress[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xBA, 0xBE };
@@ -43,7 +43,7 @@ enum states
 };
 
 // Tube model
-const TubeModel tubeModel = SBM_20;
+const TubeModel tubeModel = LND_712;
 
 // Interrupt mode:
 // * For most geiger counter modules: FALLING
