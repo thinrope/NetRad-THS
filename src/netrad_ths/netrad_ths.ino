@@ -294,7 +294,7 @@ void updateDataStream(float CPM) {
 	float DRE = CPM * conversionCoefficient;
 
     // {"longitude":"139.695506","latitude":"35.656065","value":"35","unit":"cpm"}
-    jsonData = '{"longitude":"';
+    jsonData += '{"longitude":"';
     jsonData += dev.lon;
     jsonData += '","latitude":"';
     jsonData += dev.lat;
@@ -484,16 +484,11 @@ void cmdSetDevID(int arg_cnt, char **args)
 void cmdStat(int arg_cnt, char **args)
 {
 	cmdGetMAC(arg_cnt, args);
-	cmdGetFeedID(arg_cnt, args);
 	cmdGetDevID(arg_cnt, args);
+	cmdGetLatitude(arg_cnt, args);
+	cmdGetLongitude(arg_cnt, args);
 	GetFirmwareVersion();
 }
-
-	chibiCmdAdd("getlat", cmdGetLatitude);
-	chibiCmdAdd("setlat", cmdSetLatitude);
-	chibiCmdAdd("getlon", cmdGetLongitude);
-	chibiCmdAdd("setlon", cmdSetLongitude);
-
 
 /**************************************************************************/
 // Print some help
