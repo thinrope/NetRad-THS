@@ -18,7 +18,7 @@
 #define SEPARATOR	"-----------------------------------------------------"
 #define DEBUG		0
 
-static char VERSION[] = "1.1.1";
+static char VERSION[] = "1.2.0";
 
 // this holds the info for the device
 static device_t dev;
@@ -30,8 +30,7 @@ EthernetClient client;
 IPAddress serverIP (50, 112, 106, 155);		// api.safecast.org
 IPAddress localIP (10, 11, 12, 13);			// falback localIP address
 
-
-String csvData = "";
+String jsonData = "";
 
 // Sampling interval (e.g. 60,000ms = 1min)
 unsigned long updateIntervalInMillis = 0;
@@ -89,12 +88,14 @@ void setup()
 	digitalWrite(resetPin, HIGH);
 
 	// add in the commands to the command table
-	chibiCmdAdd("getmac", cmdGetMAC);	
-	chibiCmdAdd("setmac", cmdSetMAC);	
-	chibiCmdAdd("getfeed", cmdGetFeedID);	
-	chibiCmdAdd("setfeed", cmdSetFeedID);	
-	chibiCmdAdd("getdev", cmdGetDevID);	
-	chibiCmdAdd("setdev", cmdSetDevID);	
+	chibiCmdAdd("getmac", cmdGetMAC);
+	chibiCmdAdd("setmac", cmdSetMAC);
+	chibiCmdAdd("getlat", cmdGetLatitude);
+	chibiCmdAdd("setlat", cmdSetLatitude);
+	chibiCmdAdd("getlon", cmdGetLongitude);
+	chibiCmdAdd("setlon", cmdSetLongitude);
+	chibiCmdAdd("getdev", cmdGetDevID);
+	chibiCmdAdd("setdev", cmdSetDevID);
 	chibiCmdAdd("stat", cmdStat);
 	chibiCmdAdd("help", cmdHelp);
 
@@ -105,7 +106,7 @@ void setup()
 	// init the control info
 	memset(&ctrl, 0, sizeof(devctrl_t));
 
-	// enable watchdog to allow reset if anything goes wrong			
+	// enable watchdog to allow reset if anything goes wrong
 	wdt_enable(WDTO_8S);
 
 	// Set the conversion coefficient from cpm to µSv/h
@@ -268,7 +269,7 @@ void updateDataStream(float CPM) {
 
 	// Try to connect to the server
 	Serial.println();
-	Serial.println("updateDataStream():: Connecting to cosm.com ...");
+	Serial.println("updateDataStream():: Connecting to safecast.org ...");
 	if (client.connect(serverIP, 80))
 	{
 		Serial.println("updateDataStream():: Connected");
@@ -292,30 +293,31 @@ void updateDataStream(float CPM) {
 	// Convert from cpm to µSv/h with the pre-defined coefficient
 	float DRE = CPM * conversionCoefficient;
 
-	csvData = "device_id=";
-        csvData += dev.devID;
-	csvData += "&user_id=";        
-        csvData += dev.feedID;
-	csvData += "&unit=cpm&value=";
-        appendFloatValueAsString(csvData, CPM);
-	csvData += "&latitude=0&longitude=0";
+    // {"longitude":"139.695506","latitude":"35.656065","value":"35","unit":"cpm"}
+    jsonData = '{"longitude":"';
+    jsonData += dev.lon;
+    jsonData += '","latitude":"';
+    jsonData += dev.lat;
+    jsonData += '","device_id":"';
+    jsonData += dev.devID;
+    jsonData += '","value":"';
+    appendFloatValueAsString(jsonData, CPM);
+    jsonData += '","unit":"cpm"}';
 
 	Serial.println("updateDataStream():: Sending the following data:");
-	Serial.println(csvData);
+	Serial.println(jsonData);
 	Serial.println(SEPARATOR);
 
 	client.print("POST /measurements.json?api_key=");
-        client.print(apiKey);
-	client.print("&");
-        client.print(csvData);
+	client.print(apiKey);
 	client.println(" HTTP/1.1");
 	client.println("User-Agent: Arduino");
 	client.println("Host: api.safecast.org");
 	client.print("Content-Length: ");
-	client.println(csvData.length());
-	client.println("Content-Type: text/csv");
+	client.println(jsonData.length());
+	client.println("Content-Type: application/json");
 	client.println();
-	client.println(csvData);
+	client.println(jsonData);
 }
 
 /**************************************************************************/
@@ -394,23 +396,58 @@ void cmdSetMAC(int arg_cnt, char **args)
 }
 
 /**************************************************************************/
-// Get the current feed ID
+// Get the latitude
 /**************************************************************************/
-void cmdGetFeedID(int arg_cnt, char **args)
+void cmdGetLatitude(int arg_cnt, char **args)
 {
-	printf_P(PSTR("Feed_ID:\t%u\n"), dev.feedID);
+	printf_P(PSTR("Latitude:\t%s\n"), dev.lat);
 }
 
 /**************************************************************************/
-// Set the current feed ID
+// Set the latitude
 /**************************************************************************/
-void cmdSetFeedID(int arg_cnt, char **args)
+void cmdSetLatitude(int arg_cnt, char **args)
 {
-	dev.feedID = strtol(args[1], NULL, 10);
-	eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-	printf_P(PSTR("Feed ID set to %u\n"), dev.feedID);
+	if (strlen(args[1]) < 16)
+	{
+		memcpy(dev.lat, args[1], strlen(args[1]) + 1);
+		eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
+		printf_P(PSTR("Latitude set to %s\n"), dev.lat);
+	}
+	else
+	{
+		printf_P(PSTR("ERROR - Too many characters in latitude. Must be under 16 characters.\n"));
+	}
 }
 
+/**************************************************************************/
+// Get the latitude
+/**************************************************************************/
+void cmdGetLongitude(int arg_cnt, char **args)
+{
+	printf_P(PSTR("Longitude:\t%s\n"), dev.lon);
+}
+
+/**************************************************************************/
+// Set the latitude
+/**************************************************************************/
+void cmdSetLongitude(int arg_cnt, char **args)
+{
+	if (strlen(args[1]) < 16)
+	{
+		memcpy(dev.lon, args[1], strlen(args[1]) + 1);
+		eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
+		printf_P(PSTR("Longitude set to %s\n"), dev.lon);
+	}
+	else
+	{
+		printf_P(PSTR("ERROR - Too many characters in longitude. Must be under 16 characters.\n"));
+	}
+}
+
+/**************************************************************************/
+// Get firmware version
+/**************************************************************************/
 void GetFirmwareVersion()
 {
 	printf_P(PSTR("Firmware_ver:\t%s\n"), VERSION);
@@ -452,6 +489,12 @@ void cmdStat(int arg_cnt, char **args)
 	GetFirmwareVersion();
 }
 
+	chibiCmdAdd("getlat", cmdGetLatitude);
+	chibiCmdAdd("setlat", cmdSetLatitude);
+	chibiCmdAdd("getlon", cmdGetLongitude);
+	chibiCmdAdd("setlon", cmdSetLongitude);
+
+
 /**************************************************************************/
 // Print some help
 /**************************************************************************/
@@ -460,8 +503,10 @@ void cmdHelp(int arg_cnt, char **args)
 	printf_P(PSTR("Use the following commands:\n"));
 	printf_P(PSTR("\tgetmac:\t\tshows the chibi wireless MAC address.\n"));
 	printf_P(PSTR("\tsetmac:\t\tsets the chibi wireless MAC address(0 .. FFFF).\n"));
-	printf_P(PSTR("\tsetfeed:\tsets the COSM feed ID\n"));
-	printf_P(PSTR("\tgetfeed:\tshows the COSM feed ID\n"));
+	printf_P(PSTR("\tsetlat:\tsets the device fixed latitude\n"));
+	printf_P(PSTR("\tgetlat:\tshows the device fixed latitude\n"));
+	printf_P(PSTR("\tsetlon:\tsets the device fixed longitude\n"));
+	printf_P(PSTR("\tgetlon:\tshows the device fixed longitude\n"));
 	printf_P(PSTR("\tsetdev:\t\tsets the device ID (0 .. 10 chars)\n"));
 	printf_P(PSTR("\tgetdev:\t\tshows the device ID\n"));
 }

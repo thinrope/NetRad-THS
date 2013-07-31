@@ -16,7 +16,8 @@ const int updateIntervalInMinutes = 1;
 typedef struct
 {
   unsigned short addr;
-  unsigned long feedID;
+  char lat[20];
+  char lon[20];
   char devID[20];
   char firmware_version[10];
 } device_t;
