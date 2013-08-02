@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include "board_specific_settings.h"
 #include "netrad_ths.h"
+#include <EEPROM.h>
 
 #define SEPARATOR	"-----------------------------------------------------"
 #define DEBUG		0
@@ -30,7 +31,8 @@ EthernetClient client;
 IPAddress serverIP (50, 112, 106, 155);		// api.safecast.org
 IPAddress localIP (10, 11, 12, 13);			// falback localIP address
 
-String jsonData = "";
+#define LINE_SZ 100
+static char json_buf[LINE_SZ];
 
 // Sampling interval (e.g. 60,000ms = 1min)
 unsigned long updateIntervalInMillis = 0;
@@ -213,7 +215,7 @@ void loop()
 	{
 		eventFlag = 0;					// clear the event flag for later use
 
-		//Serial.print(".");
+		Serial.print(".");
 		tone(pinSpkr, 1000);			// beep the piezo speaker
 
 		digitalWrite(pinLED, HIGH);		// flash the LED
@@ -293,20 +295,34 @@ void updateDataStream(float CPM) {
 	// Convert from cpm to µSv/h with the pre-defined coefficient
 	float DRE = CPM * conversionCoefficient;
 
-    // {"longitude":"139.695506","latitude":"35.656065","value":"35","unit":"cpm"}
-    jsonData += '{"longitude":"';
-    jsonData += dev.lon;
-    jsonData += '","latitude":"';
-    jsonData += dev.lat;
-    jsonData += '","device_id":"';
-    jsonData += dev.devID;
-    jsonData += '","value":"';
-    appendFloatValueAsString(jsonData, CPM);
-    jsonData += '","unit":"cpm"}';
+    // prepare the log entry
+	memset(json_buf, 0, LINE_SZ);
+	sprintf_P(json_buf, PSTR("{\"longitude\":\"%s\",\"latitude\":\"%s\",\"device_id\":\"%s\",\"value\":\"%d\",\"unit\":\"cpm\"}"),  \
+	              dev.lon, \
+	              dev.lat, \
+	              dev.devID,  \
+	              CPM);
 
+	int len = strlen(json_buf);
+	json_buf[len] = '\0';
+    // {"longitude":"139.695506","latitude":"35.656065","device_id":"1",value":"35","unit":"cpm"}
+  
 	Serial.println("updateDataStream():: Sending the following data:");
-	Serial.println(jsonData);
+	Serial.println(json_buf);
 	Serial.println(SEPARATOR);
+
+	if (DEBUG) {
+		Serial.print("POST /measurements.json?api_key=");
+		Serial.print(apiKey);
+		Serial.println(" HTTP/1.1");
+		Serial.println("User-Agent: Arduino");
+		Serial.println("Host: api.safecast.org");
+		Serial.print("Content-Length: ");
+		Serial.println(strlen(json_buf));
+		Serial.println("Content-Type: application/json");
+		Serial.println();
+		Serial.println(json_buf);
+	}
 
 	client.print("POST /measurements.json?api_key=");
 	client.print(apiKey);
@@ -314,10 +330,10 @@ void updateDataStream(float CPM) {
 	client.println("User-Agent: Arduino");
 	client.println("Host: api.safecast.org");
 	client.print("Content-Length: ");
-	client.println(jsonData.length());
+	client.println(strlen(json_buf));
 	client.println("Content-Type: application/json");
 	client.println();
-	client.println(jsonData);
+	client.println(json_buf);
 }
 
 /**************************************************************************/
@@ -410,6 +426,7 @@ void cmdSetLatitude(int arg_cnt, char **args)
 {
 	if (strlen(args[1]) < 16)
 	{
+		memset(dev.lat, 0, sizeof(dev.lat));
 		memcpy(dev.lat, args[1], strlen(args[1]) + 1);
 		eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
 		printf_P(PSTR("Latitude set to %s\n"), dev.lat);
@@ -435,6 +452,7 @@ void cmdSetLongitude(int arg_cnt, char **args)
 {
 	if (strlen(args[1]) < 16)
 	{
+		memset(dev.lon, 0, sizeof(dev.lon));
 		memcpy(dev.lon, args[1], strlen(args[1]) + 1);
 		eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
 		printf_P(PSTR("Longitude set to %s\n"), dev.lon);
@@ -468,6 +486,7 @@ void cmdSetDevID(int arg_cnt, char **args)
 {
 	if (strlen(args[1]) < 10)
 	{
+		memset(dev.devID, 0, sizeof(dev.devID));
 		memcpy(dev.devID, args[1], strlen(args[1]) + 1);
 		eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
 		printf_P(PSTR("Device ID set to %s\n"), dev.devID);
