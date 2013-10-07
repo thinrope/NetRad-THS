@@ -270,7 +270,7 @@ void updateDataStream(float CPM) {
 	int len = strlen(json_buf);
 	json_buf[len] = '\0';
     // {"longitude":"139.695506","latitude":"35.656065","device_id":"1",value":"35","unit":"cpm"}
-  
+
 	//Serial.println("updateDataStream():: Sending the following data:");
 	Serial.println(json_buf);
 	//Serial.println(SEPARATOR);
@@ -345,9 +345,9 @@ void appendFloatValueAsString(String& outString,float value)
 //**************************************************************************
 int freeRAM ()
 {
-	extern int __heap_start, *__brkval; 
-	int v; 
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+	extern int __heap_start, *__brkval;
+	int v;
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
 }
 
 // chibiArduino specific CLI {{{2
