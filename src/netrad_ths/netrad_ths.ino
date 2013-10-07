@@ -13,12 +13,13 @@
 #include <avr/wdt.h>
 #include <stdint.h>
 #include "board_specific_settings.h"
+#include "account.h"
 #include "netrad_ths.h"
 
 #define SEPARATOR	"-----------------------------------------------------"
 #define DEBUG		0
 
-static char VERSION[] = "1.1.1";
+static char VERSION[] = "1.1.2";
 
 // this holds the info for the device
 static device_t dev;
@@ -27,11 +28,9 @@ static device_t dev;
 static devctrl_t ctrl;
 
 EthernetClient client;
-IPAddress serverIP (173, 203, 98, 29);		// api.pachube.com
-IPAddress localIP (10, 11, 12, 13);			// falback localIP address
 
-
-String csvData = "";
+#define LINE_SZ 100
+static char json_buf[LINE_SZ];
 
 // Sampling interval (e.g. 60,000ms = 1min)
 unsigned long updateIntervalInMillis = 0;
@@ -47,14 +46,6 @@ int counts_per_sample;
 // after uploaded feeds
 long lastConnectionTime = 0;
 
-// The conversion coefficient from cpm to µSv/h
-float conversionCoefficient = 0;
-
-// NetRAD - this is specific to the NetRAD board
-int pinSpkr = 6;	// pin number of piezo speaker
-int pinLED = 7;		// pin number of event LED
-int resetPin = A1;
-int radioSelect = A3;
 
 static FILE uartout = {0};		// needed for printf
 
@@ -89,12 +80,14 @@ void setup()
 	digitalWrite(resetPin, HIGH);
 
 	// add in the commands to the command table
-	chibiCmdAdd("getmac", cmdGetMAC);	
-	chibiCmdAdd("setmac", cmdSetMAC);	
-	chibiCmdAdd("getfeed", cmdGetFeedID);	
-	chibiCmdAdd("setfeed", cmdSetFeedID);	
-	chibiCmdAdd("getdev", cmdGetDevID);	
-	chibiCmdAdd("setdev", cmdSetDevID);	
+	chibiCmdAdd("getmac", cmdGetMAC);
+	chibiCmdAdd("setmac", cmdSetMAC);
+	chibiCmdAdd("getlat", cmdGetLatitude);
+	chibiCmdAdd("setlat", cmdSetLatitude);
+	chibiCmdAdd("getlon", cmdGetLongitude);
+	chibiCmdAdd("setlon", cmdSetLongitude);
+	chibiCmdAdd("getdev", cmdGetDevID);
+	chibiCmdAdd("setdev", cmdSetDevID);
 	chibiCmdAdd("stat", cmdStat);
 	chibiCmdAdd("help", cmdHelp);
 
@@ -105,48 +98,20 @@ void setup()
 	// init the control info
 	memset(&ctrl, 0, sizeof(devctrl_t));
 
-	// enable watchdog to allow reset if anything goes wrong			
+	// enable watchdog to allow reset if anything goes wrong
 	wdt_enable(WDTO_8S);
 
-	// Set the conversion coefficient from cpm to µSv/h
-	switch (tubeModel)
-	{
-		case LND_712:
-			// Reference:
-			// http://www.lndinc.com/products/348/
-			//
-			// 1,000CPS ≒ 0.14mGy/h
-			// 60,000CPM ≒ 140µGy/h
-			// 1CPM ≒ 0.002333µGy/h
-			conversionCoefficient = 0.002333;
-			Serial.println("Sensor model: LND 712");
-			break;
-		case SBM_20:
-			// Reference:
-			// http://www.libelium.com/wireless_sensor_networks_to_control_radiation_levels_geiger_counters
-			// using 25 cps/mR/hr for SBM-20. translates to 1 count = .0067 uSv/hr
-			conversionCoefficient = 0.0067;
-			Serial.println("Sensor model: SBM-20");
-			Serial.println("Conversion factor: 150 cpm = 1 uSv/Hr");
-			break;
-		case INSPECTOR:
-			Serial.println("Sensor Model: Medcom Inspector");
-			Serial.println("Conversion factor: 310 cpm = 1 uSv/Hr");
-			conversionCoefficient = 0.0029;
-			break;
-		default:
-			Serial.println("Sensor model: UNKNOWN!");
-			break;
-	}
+	Serial.println("");
+	Serial.println("");
+	cmdStat(0,0);
 
 	tone(pinSpkr, 500); delay(100); noTone(pinSpkr);
 	tone(pinSpkr, 1500); delay(50); noTone(pinSpkr);
 	tone(pinSpkr, 500); delay(100); noTone(pinSpkr);
 
-	cmdStat(0,0);
 
 	// Initiate a DHCP session
-	Serial.println("Getting an IP address...");
+	//Serial.println("Getting an IP address...");
 	if (Ethernet.begin(macAddress) == 0)
 	{
 		Serial.println("Failed to configure Ethernet using DHCP");
@@ -170,7 +135,7 @@ void setup()
 
 	// kick the dog
 	wdt_reset();
-	Serial.println("setup(): done.");
+	//Serial.println("setup(): done.");
 	Serial.println(SEPARATOR);
 }
 
@@ -202,7 +167,7 @@ void loop()
 		if (client.connected() && (elapsedTime(lastConnectionTime) > 10000))
 		{
 			Serial.println();
-			Serial.println("Disconnecting.");
+			//Serial.println("Disconnecting.");
 			client.stop();
 		}
 	}
@@ -260,18 +225,18 @@ void onPulse()
 */
 /**************************************************************************/
 void updateDataStream(float CPM) {
-//	if (client.connected())
-//	{
-//		Serial.println("updateDataStream():: Disconnecting.");
-//		client.stop();
-//	}
+	String CPM_string = "";
+	if (client.connected())
+	{
+		//Serial.println("updateDataStream():: Disconnecting.");
+		client.stop();
+	}
 
 	// Try to connect to the server
-	Serial.println();
-	Serial.println("updateDataStream():: Connecting to cosm.com ...");
+	//Serial.println("updateDataStream():: Connecting to safecast.org ...");
 	if (client.connect(serverIP, 80))
 	{
-		Serial.println("updateDataStream():: Connected");
+		//Serial.println("updateDataStream():: Connected");
 		lastConnectionTime = millis();
 
 		// clear the connection fail count if we have at least one successful connection
@@ -284,42 +249,47 @@ void updateDataStream(float CPM) {
 		{
 				ctrl.state = RESET;
 		}
-		printf("Failed. Retries left: %d.\n", MAX_FAILED_CONNS - ctrl.conn_fail_cnt);
+		printf("Failed. Retries left: %d.\r\n", MAX_FAILED_CONNS - ctrl.conn_fail_cnt);
 		lastConnectionTime = millis();
 		return;
 	}
 
 	// Convert from cpm to µSv/h with the pre-defined coefficient
 	float DRE = CPM * conversionCoefficient;
+	appendFloatValueAsString(CPM_string, CPM);
 
-	csvData = "0,";
-	appendFloatValueAsString(csvData, CPM);
-	csvData += "\n1,";
-	appendFloatValueAsString(csvData, DRE);
-	csvData += "\n13,";
-	csvData += millis() / 1000;
+    // prepare the log entry
+	memset(json_buf, 0, LINE_SZ);
+	sprintf_P(json_buf, PSTR("{\"longitude\":\"%s\",\"latitude\":\"%s\",\"device_id\":\"%s\",\"value\":\"%s\",\"unit\":\"cpm\"}"),  \
+	              dev.lon, \
+	              dev.lat, \
+	              dev.ID,  \
+	              CPM_string.c_str());
+	// FIXME: Need also "captured_at":"2012-09-27T02:55:28Z" and the whole RTC enchilada...
 
-	Serial.println("updateDataStream():: Sending the following data:");
-	Serial.println(csvData);
-	Serial.println(SEPARATOR);
+	int len = strlen(json_buf);
+	json_buf[len] = '\0';
+    // {"longitude":"139.695506","latitude":"35.656065","device_id":"1",value":"35","unit":"cpm"}
+  
+	//Serial.println("updateDataStream():: Sending the following data:");
+	Serial.println(json_buf);
+	//Serial.println(SEPARATOR);
 
-	client.print("PUT /v2/feeds/");
-	client.print(dev.feedID);
+	client.print("POST /measurements.json?api_key=");
+	client.print(apiKey);
 	client.println(" HTTP/1.1");
 	client.println("User-Agent: Arduino");
-	client.println("Host: api.pachube.com");
-	client.print("X-PachubeApiKey: ");
-	client.println(apiKey);
+	client.println("Host: api.safecast.org");
 	client.print("Content-Length: ");
-	client.println(csvData.length());
-	client.println("Content-Type: text/csv");
+	client.println(strlen(json_buf));
+	client.println("Content-Type: application/json");
 	client.println();
-	client.println(csvData);
+	client.println(json_buf);
 }
 
-/**************************************************************************/
+//**************************************************************************
 // calculate elapsed time, taking into account rollovers
-/**************************************************************************/
+//**************************************************************************
 unsigned long elapsedTime(unsigned long startTime)
 {
 	unsigned long stopTime = millis();
@@ -334,20 +304,19 @@ unsigned long elapsedTime(unsigned long startTime)
 	}
 }
 
+//**************************************************************************
 // implement the printf function from within arduino
-/**************************************************************************/
+//**************************************************************************
 static int uart_putchar (char c, FILE *stream)
 {
 		Serial.write(c) ;
 		return 0 ;
 }
 
-/**************************************************************************/
-/*!
+//**************************************************************************
 // Since "+" operator doesn't support float values,
 // convert a float value to a fixed point value "%+.3f"
-*/
-/**************************************************************************/
+//**************************************************************************
 void appendFloatValueAsString(String& outString,float value)
 {
 
@@ -371,98 +340,125 @@ void appendFloatValueAsString(String& outString,float value)
 	outString += fractionalPortion;
 }
 
+//**************************************************************************
+// return simply the remaining RAM (not very accurate)
+//**************************************************************************
+int freeRAM ()
+{
+	extern int __heap_start, *__brkval; 
+	int v; 
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
 // chibiArduino specific CLI {{{2
 // ----------------------------------------------------------------------------
 
-/**************************************************************************/
-// Get address
-/**************************************************************************/
-void cmdGetMAC(int arg_cnt, char **args)
+void print_OK(void)
 {
-	printf_P(PSTR("MAC_address:\t%04X\n"), dev.addr);
+	printf_P(PSTR("OK.\t["));
+	Serial.print(freeRAM());
+	printf_P(PSTR(" b free]\r\n"));
 }
 
-/**************************************************************************/
-// Set address
-/**************************************************************************/
+void cmdGetMAC(int arg_cnt, char **args)
+{
+	printf_P(PSTR("MAC_address:\t%04X\r\n"), dev.addr);
+}
+
 void cmdSetMAC(int arg_cnt, char **args)
 {
 	dev.addr = strtol(args[1], NULL, 16);
 	eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-	printf_P(PSTR("MAC_address set to %04X\n"), dev.addr);
+	print_OK();
+	cmdGetMAC(0,0);
 }
 
-/**************************************************************************/
-// Get the current feed ID
-/**************************************************************************/
-void cmdGetFeedID(int arg_cnt, char **args)
+void cmdGetLatitude(int arg_cnt, char **args)
 {
-	printf_P(PSTR("Feed_ID:\t%u\n"), dev.feedID);
+	printf_P(PSTR("Latitude:\t%s\r\n"), dev.lat);
 }
 
-/**************************************************************************/
-// Set the current feed ID
-/**************************************************************************/
-void cmdSetFeedID(int arg_cnt, char **args)
+void cmdSetLatitude(int arg_cnt, char **args)
 {
-	dev.feedID = strtol(args[1], NULL, 10);
-	eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-	printf_P(PSTR("Feed ID set to %u\n"), dev.feedID);
+	if (strlen(args[1]) < 16)
+	{
+		memset(dev.lat, 0, sizeof(dev.lat));
+		memcpy(dev.lat, args[1], strlen(args[1]) + 1);
+		eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
+		print_OK();
+		cmdGetLatitude(0,0);
+	}
+	else
+	{
+		printf_P(PSTR("ERROR - Too many characters in latitude. Must be under 16 characters.\r\n"));
+	}
+}
+
+void cmdGetLongitude(int arg_cnt, char **args)
+{
+	printf_P(PSTR("Longitude:\t%s\r\n"), dev.lon);
+}
+
+void cmdSetLongitude(int arg_cnt, char **args)
+{
+	if (strlen(args[1]) < 16)
+	{
+		memset(dev.lon, 0, sizeof(dev.lon));
+		memcpy(dev.lon, args[1], strlen(args[1]) + 1);
+		eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
+		print_OK();
+		cmdGetLongitude(0,0);
+	}
+	else
+	{
+		printf_P(PSTR("ERROR - Too many characters in longitude. Must be under 16 characters.\r\n"));
+	}
 }
 
 void GetFirmwareVersion()
 {
-	printf_P(PSTR("Firmware_ver:\t%s\n"), VERSION);
+	printf_P(PSTR("Firmware_ver:\t%s\r\n"), VERSION);
 }
 
-/**************************************************************************/
-// Get the device ID
-/**************************************************************************/
 void cmdGetDevID(int arg_cnt, char **args)
 {
-	printf_P(PSTR("Device_ID:\t%s\n"), dev.devID);
+	printf_P(PSTR("Device_ID:\t%s\r\n"), dev.ID);
 }
 
-/**************************************************************************/
-// Set the device ID
-/**************************************************************************/
 void cmdSetDevID(int arg_cnt, char **args)
 {
 	if (strlen(args[1]) < 10)
 	{
-		memcpy(dev.devID, args[1], strlen(args[1]) + 1);
+		memcpy(dev.ID, args[1], strlen(args[1]) + 1);
 		eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-		printf_P(PSTR("Device ID set to %s\n"), dev.devID);
+		printf_P(PSTR("Device ID set to %s\r\n"), dev.ID);
 	}
 	else
 	{
-		printf_P(PSTR("ERROR - Too many characters in Device ID. Must be under 10 characters.\n"));
+		printf_P(PSTR("ERROR - Too many characters in Device ID. Must be under 10 characters.\r\n"));
 	}
 }
 
-/**************************************************************************/
-// Print out the current device ID
-/**************************************************************************/
 void cmdStat(int arg_cnt, char **args)
 {
-	cmdGetMAC(arg_cnt, args);
-	cmdGetFeedID(arg_cnt, args);
 	cmdGetDevID(arg_cnt, args);
+	cmdGetMAC(arg_cnt, args);
+	cmdGetLatitude(arg_cnt, args);
+	cmdGetLongitude(arg_cnt, args);
 	GetFirmwareVersion();
+
+	printf_P(PSTR("Free RAM:\t"));
+	Serial.print(freeRAM());
+	printf_P(PSTR(" bytes\r\n"));
 }
 
-/**************************************************************************/
-// Print some help
-/**************************************************************************/
 void cmdHelp(int arg_cnt, char **args)
 {
-	printf_P(PSTR("Use the following commands:\n"));
-	printf_P(PSTR("\tgetmac:\t\tshows the chibi wireless MAC address.\n"));
-	printf_P(PSTR("\tsetmac:\t\tsets the chibi wireless MAC address(0 .. FFFF).\n"));
-	printf_P(PSTR("\tsetfeed:\tsets the COSM feed ID\n"));
-	printf_P(PSTR("\tgetfeed:\tshows the COSM feed ID\n"));
-	printf_P(PSTR("\tsetdev:\t\tsets the device ID (0 .. 10 chars)\n"));
-	printf_P(PSTR("\tgetdev:\t\tshows the device ID\n"));
+	printf_P(PSTR("Use the following set/get commands:\r\n"));
+	printf_P(PSTR("\t{set|get}mac:\t\tchibi wireless MAC address (0 .. FFFF)\r\n"));
+	printf_P(PSTR("\t{set|get}dev:\t\tthe device ID (need to be registered)\r\n"));
+	printf_P(PSTR("\t{set|get}lat:\t\tthe device latitude\r\n"));
+	printf_P(PSTR("\t{set|get}lon:\t\tthe device longitude\r\n"));
 }
 // ----------------------------------------------------------------------------
 // }}}2

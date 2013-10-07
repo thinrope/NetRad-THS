@@ -22,10 +22,12 @@ static int uart_putchar (char, FILE *);
 /* chibiArduino specific CLI */
 void cmdGetMAC(int, char **);
 void cmdSetMAC(int, char **);
-void cmdGetFeedID(int, char **);
-void cmdSetFeedID(int, char **);
 void cmdGetDevID(int, char **);
 void cmdSetDevID(int, char **);
+void cmdGetLatitude(int, char **);
+void cmdSetLatitude(int, char **);
+void cmdGetLongitude(int, char **);
+void cmdSetLongitude(int, char **);
 void cmdStat(int, char **);
 void cmdHelp(int, char **);
 // ----------------------------------------------------------------------------
