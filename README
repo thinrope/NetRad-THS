@@ -53,3 +53,14 @@ cd src/netrad_ths
 make
 make upload
 make monitor
+
+
+* SOME NOTES ON git
+To use other repos, here is an example
+
+git remote add Lionel https://bitbucket.org/lbergeret/netrad-safecast-api.git
+git remote set-url --push Lionel $(git config --get remote.origin.url)
+git fetch Lionel
+git co -b Lionel remotes/Lionel/master
+git push Lionel origin:refs/heads/Lionel
+
