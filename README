@@ -59,8 +59,14 @@ make monitor
 To use other repos, here is an example
 
 git remote add Lionel https://bitbucket.org/lbergeret/netrad-safecast-api.git
-git remote set-url --push Lionel $(git config --get remote.origin.url)
-git fetch Lionel
-git co -b Lionel remotes/Lionel/master
-git push Lionel origin:refs/heads/Lionel
+git remote add Robin https://github.com/fakufaku/nGeigie.git
+git remote add Rob https://github.com/Safecast/nGeigie.git
 
+for R in Lionel Robin Rob; do git remote set-url --push $R $(git config --get remote.origin.url); git fetch $R; done
+
+git diff remotes/Rob/master remotes/Lionel/master doc/
+git difftool -d remotes/Rob/master  remotes/Robin/master
+git difftool -d 09f9e8d3d57323112340da8138d30592ff323b3d HEAD src/netrad_ths/netrad_ths.ino
+
+# git co -b Lionel remotes/Lionel/master
+# git push Lionel origin:refs/heads/Lionel
