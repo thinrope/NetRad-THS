@@ -1,14 +1,14 @@
 #include <SPI.h>		// needed for Arduino versions later than 0018
 #include <Ethernet.h>
 #include <util.h>
-#include <avr/eeprom.h>
 #include <limits.h>
+#include <avr/eeprom.h>
 #include <avr/wdt.h>
 #include "board_specific_settings.h"
 #include "netrad_ths.h"
 
 #define DEBUG		0
-#define SEPARATOR	Serial.println("|--------------------------------");
+#define SEPARATOR	Serial.println(F("|----------------------------------------"));
 
 #define _SS_MAX_RX_BUFF 128 	// FIXME: Do we need software serial? RX buffer size
 
@@ -40,7 +40,7 @@ void setup() {
 	stdout = &uartout ;
 	Serial.begin(57600);
 
-	Serial.println("| INIT: STATION");
+	Serial.println(F("| INIT: STATION"));
 	SEPARATOR
 
 	pinMode(pin_LED, OUTPUT);
@@ -50,18 +50,18 @@ void setup() {
 	tone(pin_piezo, 1500); delay(50); noTone(pin_piezo);
 	tone(pin_piezo, 500); delay(100); noTone(pin_piezo);
 
-	Serial.print("| Device ID:\t");		Serial.println(nGeigie.ID);
-	Serial.print("| Firmware:\t");		Serial.println(nGeigie.firmware_version);
+	Serial.print(F("| Device ID:\t"));		Serial.println(nGeigie.ID);
+	Serial.print(F("| Firmware:\t"));		Serial.println(nGeigie.firmware_version);
 	Serial.println();
 
-	Serial.println("| INIT: GEIGER");
+	Serial.println(F("| INIT: GEIGER"));
 	SEPARATOR
-	attachInterrupt(1, on_pulse, interruptMode);
-	Serial.print("| GM tube:\t");		Serial.println(nGeigie.sensor);
-	Serial.print("| CPM2DRE:\t");		Serial.println(nGeigie.CPM2DRE);
+	attachInterrupt(1, on_pulse, interrupt_mode);
+	Serial.print(F("| GM tube:\t"));		Serial.println(nGeigie.sensor);
+	Serial.print(F("| CPM2DRE:\t"));		Serial.println(nGeigie.CPM2DRE);
 	Serial.println();
 
-	Serial.println("| INIT: NETWORK");
+	Serial.println(F("| INIT: NETWORK"));
 	SEPARATOR
 
 	// reset the Wiznet chip
@@ -73,31 +73,32 @@ void setup() {
 	wdt_enable(WDTO_8S);
 	if (Ethernet.begin(macAddress) == 0)
 	{
-		Serial.println("][ ERROR: failed DHCP! resetting...");
+		Serial.println(F("][ ERROR: failed DHCP! resetting..."));
 		delay(500);
 		device_reset();
 	}
 	else
 	{
 		wdt_reset();
-		Serial.print("| IP address:\t"); Serial.println(Ethernet.localIP());
+		Serial.print(F("| IP address:\t")); Serial.println(Ethernet.localIP());
 	}
 	Serial.println();
 	
 
-	Serial.println("| INIT: RADIO");
+	Serial.println(F("| INIT: RADIO"));
 	SEPARATOR
 
 	// put radio in idle state
 	pinMode(pin_radio_select, OUTPUT);
 	digitalWrite(pin_radio_select, HIGH);
-	Serial.print("| status:\t");		Serial.println("disabled");
+	Serial.print(F("| status:\tpin ")); Serial.print(pin_radio_select); Serial.println(F(" disabled."));
 	Serial.println();
 
+	Serial.println();
 
-	Serial.print("| MONITOR: POSTing every ");
+	Serial.print(F("| MONITOR: POSTing every "));
 	Serial.print(nGeigie.API_update_seconds);
-	Serial.println(" s");
+	Serial.println(F(" s"));
 	SEPARATOR
 }
 
@@ -170,7 +171,7 @@ void POST_data(float CPM)
 		int len = strlen(json_buf);
 		json_buf[len] = '\0';
 
-		client.print("POST /scripts/index.php?api_key="); client.print(nGeigie.API_key); client.println(F(" HTTP/1.1")); // NOTE: keep the space
+		client.print(F("POST /scripts/index.php?api_key=")); client.print(nGeigie.API_key); client.println(F(" HTTP/1.1")); // NOTE: keep the space
 		client.println(F("Accept: application/json"));
 		client.print(F("Host: ")); client.println(nGeigie.API_endpoint);
 		client.print(F("Content-Length: ")); client.println(strlen(json_buf));
@@ -183,7 +184,7 @@ void POST_data(float CPM)
 	}
 	else
 	{
-		Serial.println("ERROR: POST failed!");	//FIXME: in that case data needs to be buffered locally
+		Serial.println(F("ERROR: POST failed!"));	//FIXME: in that case data needs to be buffered locally
 		device_connection_failures++;
 		if (device_connection_failures >= _CONNECTION_FAILURES_MAX)
 		{

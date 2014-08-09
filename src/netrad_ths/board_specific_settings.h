@@ -17,7 +17,7 @@ static struct
 	char const * location_other = "Tokyo-to, Minato-ku";
 	float const CPM2DRE = 1.0 / 120;
 
-	char const * firmware_version = "2.0.0-rc1";
+	char const * firmware_version = _FULL_VERSION;
 
 	char const * API_acount = "kalin@safecast.org";
 	char const * API_key = "puEMBiqTsN8EfbJh5Tto";
@@ -39,5 +39,5 @@ int const server_port = 80;
 int const pin_piezo = 6;		// geiger clicker, on the NetRAD
 int const pin_LED = 7;			// geiger LED, on the NetRAD
 int const pin_wiznet_reset = 15;	// LAN chip reset pin, on the NetRAD
-int const pin_radio_select = A3; 	// Radio select pin, on the Freakduino FIXME: const
-int const interruptMode = RISING;	// NetRAD produces positive pulses => RISING
+int const pin_radio_select = 17; 	// Radio select pin, on the Freakduino FIXME: const
+int const interrupt_mode = RISING;	// NetRAD produces positive pulses => RISING
