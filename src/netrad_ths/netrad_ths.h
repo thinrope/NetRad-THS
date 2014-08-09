@@ -17,6 +17,7 @@ unsigned long ms_since(unsigned long);
 
 /* debug related */
 void DEBUG_event(void);
+int DEBUG_free_RAM(void);
 
 // ----------------------------------------------------------------------------
 //

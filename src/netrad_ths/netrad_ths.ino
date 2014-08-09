@@ -104,7 +104,6 @@ void setup() {
 
 void loop()
 {
-
 	if (device_state != _DEVICE_RESET)
 	{
 		wdt_reset();
@@ -115,7 +114,7 @@ void loop()
 	if (eventFlag)
 	{
 		eventFlag = 0;
-		// DEBUG_event();
+		DEBUG_event();
 		tone(pin_piezo, 2000);
 
 		digitalWrite(pin_LED, HIGH);		// flash the LED
@@ -217,13 +216,26 @@ void on_pulse()
 	eventFlag = 1;
 }
 
+#if DEBUG
 void DEBUG_event(void)
 {
 	Serial.print(millis()); Serial.print("\t");
 	Serial.print(tmp_ms); Serial.print(" / "); Serial.print((unsigned long)POST_interval); Serial.print("\t");
-	Serial.print(counts_per_sample); Serial.println();
+	Serial.print(counts_per_sample); Serial.print("\t");
+	Serial.print(DEBUG_free_RAM());
+	Serial.println();
 }
 
+int DEBUG_free_RAM (void)
+{
+	extern int __heap_start, *__brkval;
+	int v;
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+}
+#else
+void DEBUG_event(void){};
+int DEBUG_free_RAM(void){};
+#endif
 
 // ----------------------------------------------------------------------------
 // }}}1

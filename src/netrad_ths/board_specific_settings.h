@@ -15,7 +15,7 @@ static struct
 	char const * sensor = "SI-180G";
 	char const * location_country = "Japan";
 	char const * location_other = "Tokyo-to, Minato-ku";
-	float const CPM2DRE = 1.0 / 120;
+	float const CPM2DRE = 8.33E-3;
 
 	char const * firmware_version = _FULL_VERSION;
 
