@@ -9,10 +9,10 @@
 // FIXME: dump to EEPROM instead?
 static struct
 {
-	char const * ID = "80";
+	char const * ID = "77";
 	char const * lat = "+34.56" ;
-	char const * lon = "+140.80" ;
-	char const * sensor = "SI-180G";
+	char const * lon = "+140.77" ;
+	char const * sensor = "SBM-20";
 	char const * location_country = "Japan";
 	char const * location_other = "Tokyo-to, Minato-ku";
 	float const CPM2DRE = 8.33E-3;
@@ -31,7 +31,7 @@ void  (* device_reset) (void) = 0;	// usage: device_reset();
 
 
 EthernetClient client;
-byte macAddress[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x13, 0x80 };
+byte macAddress[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x13, 0x77 };
 IPAddress server_IP(107, 161, 164, 166);  // FIXME: IP of realtime.safecast.org
 int const server_port = 80;
 
