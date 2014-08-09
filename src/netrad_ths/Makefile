@@ -15,4 +15,4 @@ ARDUINO_DIR = /usr/share/arduino
 ARDMK_DIR = ../../tools/Arduino-Makefile
 AVR_TOOLS_DIR = /usr
 
-include ${ARDMK_DIR}/arduino-mk/Arduino.mk
+include ${ARDMK_DIR}/Arduino.mk
