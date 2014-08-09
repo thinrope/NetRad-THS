@@ -1,238 +1,142 @@
-// Connection:
-// * An Arduino Ethernet Shield
-// * D3: The output pin of the Geiger counter (active low)
-//
-// Reference:
-// * http://www.sparkfun.com/products/9848
-
-#include <SPI.h>
+#include <SPI.h>		// needed for Arduino versions later than 0018
 #include <Ethernet.h>
+#include <util.h>
 #include <avr/eeprom.h>
-#include <chibi.h>
 #include <limits.h>
 #include <avr/wdt.h>
-#include <stdint.h>
 #include "board_specific_settings.h"
 #include "netrad_ths.h"
 
-#define SEPARATOR	"-----------------------------------------------------"
 #define DEBUG		0
+#define SEPARATOR	Serial.println("|--------------------------------");
 
-static char VERSION[] = "1.1.1";
+#define _SS_MAX_RX_BUFF 128 	// FIXME: Do we need software serial? RX buffer size
 
-// this holds the info for the device
-static device_t dev;
+#define LINE_SZ 100
 
-// holds the control info for the device
-static devctrl_t ctrl;
-
-EthernetClient client;
-IPAddress serverIP (173, 203, 98, 29);		// api.pachube.com
-IPAddress localIP (10, 11, 12, 13);			// falback localIP address
-
-
-String csvData = "";
+static char json_buf[LINE_SZ];
 
 // Sampling interval (e.g. 60,000ms = 1min)
-unsigned long updateIntervalInMillis = 0;
+unsigned long const POST_interval = nGeigie.API_update_seconds * 1000UL;
 
-// The next time to feed
-unsigned long nextExecuteMillis = 0;
+// The last time
+unsigned long last_POST_success = 0UL;
+
 
 // Event flag signals when a geiger event has occurred
 volatile unsigned char eventFlag = 0;		// FIXME: Can we get rid of eventFlag and use counts>0?
-int counts_per_sample;
-
-// The last connection time to disconnect from the server
-// after uploaded feeds
-long lastConnectionTime = 0;
-
-// The conversion coefficient from cpm to µSv/h
-float conversionCoefficient = 0;
-
-// NetRAD - this is specific to the NetRAD board
-int pinSpkr = 6;	// pin number of piezo speaker
-int pinLED = 7;		// pin number of event LED
-int resetPin = A1;
-int radioSelect = A3;
+volatile unsigned long counts_per_sample = 0UL;	// 32-bit, max 4G; about 24h @ 50Kcps
 
 static FILE uartout = {0};		// needed for printf
 
+unsigned long tmp_counts = 0UL;
+unsigned long tmp_ms = 1UL;	//FIXME: divzero?
+float CPM = 0.0;
+
 // main program (setup/loop) {{{1
 // ----------------------------------------------------------------------------
+void setup() {
 
-void setup()
-{
-	byte *dev_ptr;
-	pinMode(pinSpkr, OUTPUT);
-	pinMode(pinLED, OUTPUT);
-
-	// fill in the UART file descriptor with pointer to writer.
-	fdev_setup_stream (&uartout, uart_putchar, NULL, _FDEV_SETUP_WRITE);
-
-	// The uart is the standard output device STDOUT.
 	stdout = &uartout ;
+	Serial.begin(57600);
 
-	// init command line parser
-	chibiCmdInit(57600);
+	Serial.println("| INIT: STATION");
+	SEPARATOR
 
-	// put radio in idle state
-	pinMode(radioSelect, OUTPUT);
-	digitalWrite(radioSelect, HIGH);		// disable radio chip select
+	pinMode(pin_LED, OUTPUT);
+	// beep 3 times as a greeting
+	pinMode(pin_piezo, OUTPUT);
+	tone(pin_piezo, 500); delay(100); noTone(pin_piezo);
+	tone(pin_piezo, 1500); delay(50); noTone(pin_piezo);
+	tone(pin_piezo, 500); delay(100); noTone(pin_piezo);
+
+	Serial.print("| Device ID:\t");		Serial.println(nGeigie.ID);
+	Serial.print("| Firmware:\t");		Serial.println(nGeigie.firmware_version);
+	Serial.println();
+
+	Serial.println("| INIT: GEIGER");
+	SEPARATOR
+	attachInterrupt(1, on_pulse, interruptMode);
+	Serial.print("| GM tube:\t");		Serial.println(nGeigie.sensor);
+	Serial.print("| CPM2DRE:\t");		Serial.println(nGeigie.CPM2DRE);
+	Serial.println();
+
+	Serial.println("| INIT: NETWORK");
+	SEPARATOR
 
 	// reset the Wiznet chip
-	pinMode(resetPin, OUTPUT);
-	digitalWrite(resetPin, HIGH);
-	delay(20);
-	digitalWrite(resetPin, LOW);
-	delay(20);
-	digitalWrite(resetPin, HIGH);
+	pinMode(pin_wiznet_reset, OUTPUT);
+	digitalWrite(pin_wiznet_reset, HIGH); delay(20);
+	digitalWrite(pin_wiznet_reset, LOW); delay(20);
+	digitalWrite(pin_wiznet_reset, HIGH);
 
-	// add in the commands to the command table
-	chibiCmdAdd("getmac", cmdGetMAC);	
-	chibiCmdAdd("setmac", cmdSetMAC);	
-	chibiCmdAdd("getfeed", cmdGetFeedID);	
-	chibiCmdAdd("setfeed", cmdSetFeedID);	
-	chibiCmdAdd("getdev", cmdGetDevID);	
-	chibiCmdAdd("setdev", cmdSetDevID);	
-	chibiCmdAdd("stat", cmdStat);
-	chibiCmdAdd("help", cmdHelp);
-
-	// get the device info
-	dev_ptr = (byte *)&dev;
-	eeprom_read_block((byte *)&dev, 0, sizeof(device_t));
-
-	// init the control info
-	memset(&ctrl, 0, sizeof(devctrl_t));
-
-	// enable watchdog to allow reset if anything goes wrong			
 	wdt_enable(WDTO_8S);
-
-	// Set the conversion coefficient from cpm to µSv/h
-	switch (tubeModel)
-	{
-		case LND_712:
-			// Reference:
-			// http://www.lndinc.com/products/348/
-			//
-			// 1,000CPS ≒ 0.14mGy/h
-			// 60,000CPM ≒ 140µGy/h
-			// 1CPM ≒ 0.002333µGy/h
-			conversionCoefficient = 0.002333;
-			Serial.println("Sensor model: LND 712");
-			break;
-		case SBM_20:
-			// Reference:
-			// http://www.libelium.com/wireless_sensor_networks_to_control_radiation_levels_geiger_counters
-			// using 25 cps/mR/hr for SBM-20. translates to 1 count = .0067 uSv/hr
-			conversionCoefficient = 0.0067;
-			Serial.println("Sensor model: SBM-20");
-			Serial.println("Conversion factor: 150 cpm = 1 uSv/Hr");
-			break;
-		case INSPECTOR:
-			Serial.println("Sensor Model: Medcom Inspector");
-			Serial.println("Conversion factor: 310 cpm = 1 uSv/Hr");
-			conversionCoefficient = 0.0029;
-			break;
-		default:
-			Serial.println("Sensor model: UNKNOWN!");
-			break;
-	}
-
-	tone(pinSpkr, 500); delay(100); noTone(pinSpkr);
-	tone(pinSpkr, 1500); delay(50); noTone(pinSpkr);
-	tone(pinSpkr, 500); delay(100); noTone(pinSpkr);
-
-	cmdStat(0,0);
-
-	// Initiate a DHCP session
-	Serial.println("Getting an IP address...");
 	if (Ethernet.begin(macAddress) == 0)
 	{
-		Serial.println("Failed to configure Ethernet using DHCP");
-		// DHCP failed, so use a fixed IP address:
-		Ethernet.begin(macAddress, localIP);
+		Serial.println("][ ERROR: failed DHCP! resetting...");
+		delay(500);
+		device_reset();
 	}
+	else
+	{
+		wdt_reset();
+		Serial.print("| IP address:\t"); Serial.println(Ethernet.localIP());
+	}
+	Serial.println();
+	
 
-	Serial.print("local_IP:\t");
-	Serial.println(Ethernet.localIP());
+	Serial.println("| INIT: RADIO");
+	SEPARATOR
 
-	// Attach an interrupt to the digital pin and start counting
-	//
-	// Note:
-	// Most Arduino boards have two external interrupts:
-	// numbers 0 (on digital pin 2) and 1 (on digital pin 3)
-	attachInterrupt(1, onPulse, interruptMode);
-	updateIntervalInMillis = updateIntervalInMinutes * 60000;
+	// put radio in idle state
+	pinMode(pin_radio_select, OUTPUT);
+	digitalWrite(pin_radio_select, HIGH);
+	Serial.print("| status:\t");		Serial.println("disabled");
+	Serial.println();
 
-	unsigned long now = millis();
-	nextExecuteMillis = now + updateIntervalInMillis;
 
-	// kick the dog
-	wdt_reset();
-	Serial.println("setup(): done.");
-	Serial.println(SEPARATOR);
+	Serial.print("| MONITOR: POSTing every ");
+	Serial.print(nGeigie.API_update_seconds);
+	Serial.println(" s");
+	SEPARATOR
 }
 
 void loop()
 {
-	// kick the dog only if we're not in RESET state. if we're in RESET,
-	// then that means something happened to mess up our connection and
-	// we will just let the device gracefully reset
-	if (ctrl.state != RESET)
+
+	if (nGeigie.state != _DEVICE_RESET)
 	{
 		wdt_reset();
 	}
-
-	// poll the command line for any input
-	chibiCmdPoll();
-
-	// maintain the DHCP lease, if needed
 	Ethernet.maintain();
-
-	if (DEBUG)
-	{
-		// Echo received strings to a host PC
-		if (client.available())
-		{
-			char c = client.read();
-			Serial.print(c);
-		}
-
-		if (client.connected() && (elapsedTime(lastConnectionTime) > 10000))
-		{
-			Serial.println();
-			Serial.println("Disconnecting.");
-			client.stop();
-		}
-	}
 
 	// Add any geiger event handling code here
 	if (eventFlag)
 	{
-		eventFlag = 0;					// clear the event flag for later use
+		eventFlag = 0;
+		// DEBUG_event();
+		tone(pin_piezo, 2000);
 
-		//Serial.print(".");
-		tone(pinSpkr, 1000);			// beep the piezo speaker
+		digitalWrite(pin_LED, HIGH);		// flash the LED
+		delay(7);
+		digitalWrite(pin_LED, LOW);
 
-		digitalWrite(pinLED, HIGH);		// flash the LED
-		delay(20);
-		digitalWrite(pinLED, LOW);
-
-		noTone(pinSpkr);				// turn off the speaker
+		noTone(pin_piezo);
 	}
 
-	// check if its time to update server.
-	// elapsedTime function will take into account counter rollover.
-	if (elapsedTime(lastConnectionTime) < updateIntervalInMillis)
+	// time to update server?
+	tmp_ms = ms_since(last_POST_success);
+	if (tmp_ms >= POST_interval)
 	{
-		return;
+		// read and reset the counter
+		tmp_counts = counts_per_sample;		// FIXME: loosing counts on unsuccessfull update here!
+		counts_per_sample = 0UL;
+
+		CPM = (float)tmp_counts / ((float)tmp_ms / 60000.0);
+
+		POST_data(CPM);
 	}
-
-	float CPM = (float)counts_per_sample / (float)updateIntervalInMinutes;
-	counts_per_sample = 0;
-
-	updateDataStream(CPM);
+	// FIXME: add basic serial port comm (e.g. Enter for current reading)
 }
 
 // ----------------------------------------------------------------------------
@@ -241,86 +145,58 @@ void loop()
 // utility functions {{{1
 // ----------------------------------------------------------------------------
 
-//**************************************************************************/
-/*!
-//  On each falling edge of the Geiger counter's output,
-//  increment the counter and signal an event. The event
-//  can be used to do things like pulse a buzzer or flash an LED
-*/
-/**************************************************************************/
-void onPulse()
+void POST_data(float CPM)
 {
-	counts_per_sample++;
-	eventFlag = 1;
-}
-
-/**************************************************************************/
-/*!
-//  Send data to server
-*/
-/**************************************************************************/
-void updateDataStream(float CPM) {
-//	if (client.connected())
-//	{
-//		Serial.println("updateDataStream():: Disconnecting.");
-//		client.stop();
-//	}
+	if (client.connected())
+	{
+		client.stop();
+	}
 
 	// Try to connect to the server
-	Serial.println();
-	Serial.println("updateDataStream():: Connecting to cosm.com ...");
-	if (client.connect(serverIP, 80))
+	if (client.connect(server_IP, server_port))
 	{
-		Serial.println("updateDataStream():: Connected");
-		lastConnectionTime = millis();
+		//Serial.println("\b\b\b: connected.");
+		last_POST_success = millis();
 
 		// clear the connection fail count if we have at least one successful connection
-		ctrl.conn_fail_cnt = 0;
+		nGeigie.connection_failures = 0;
+
+		char CPM_string[16];
+		dtostrf(CPM, 0, 1, CPM_string);
+
+		memset(json_buf, 0, LINE_SZ);
+		sprintf_P(json_buf, PSTR("{\"longitude\":\"%s\",\"latitude\":\"%s\",\"device_id\":\"%s\",\"value\":\"%s\",\"unit\":\"cpm\"}"), nGeigie.lon, nGeigie.lat, nGeigie.ID, CPM_string);
+
+		int len = strlen(json_buf);
+		json_buf[len] = '\0';
+
+		client.print("POST /scripts/index.php?api_key="); client.print(nGeigie.API_key); client.println(F(" HTTP/1.1")); // NOTE: keep the space
+		client.println(F("Accept: application/json"));
+		client.print(F("Host: ")); client.println(nGeigie.API_endpoint);
+		client.print(F("Content-Length: ")); client.println(strlen(json_buf));
+		client.println(F("Content-Type: application/json"));
+		client.println();		// FIXME: only single CRNL is OK?
+		client.println(json_buf);
+		client.stop();
+
+		Serial.println(json_buf);
 	}
 	else
 	{
-		ctrl.conn_fail_cnt++;
-		if (ctrl.conn_fail_cnt >= MAX_FAILED_CONNS)
+		Serial.println("ERROR: POST failed!");	//FIXME: in that case data needs to be buffered locally
+		nGeigie.connection_failures++;
+		if (nGeigie.connection_failures >= _CONNECTION_FAILURES_MAX)
 		{
-				ctrl.state = RESET;
+			nGeigie.state = _DEVICE_RESET;
 		}
-		printf("Failed. Retries left: %d.\n", MAX_FAILED_CONNS - ctrl.conn_fail_cnt);
-		lastConnectionTime = millis();
+		last_POST_success = millis();
 		return;
 	}
 
-	// Convert from cpm to µSv/h with the pre-defined coefficient
-	float DRE = CPM * conversionCoefficient;
-
-	csvData = "0,";
-	appendFloatValueAsString(csvData, CPM);
-	csvData += "\n1,";
-	appendFloatValueAsString(csvData, DRE);
-	csvData += "\n13,";
-	csvData += millis() / 1000;
-
-	Serial.println("updateDataStream():: Sending the following data:");
-	Serial.println(csvData);
-	Serial.println(SEPARATOR);
-
-	client.print("PUT /v2/feeds/");
-	client.print(dev.feedID);
-	client.println(" HTTP/1.1");
-	client.println("User-Agent: Arduino");
-	client.println("Host: api.pachube.com");
-	client.print("X-PachubeApiKey: ");
-	client.println(apiKey);
-	client.print("Content-Length: ");
-	client.println(csvData.length());
-	client.println("Content-Type: text/csv");
-	client.println();
-	client.println(csvData);
 }
 
-/**************************************************************************/
-// calculate elapsed time, taking into account rollovers
-/**************************************************************************/
-unsigned long elapsedTime(unsigned long startTime)
+
+unsigned long ms_since(unsigned long startTime)
 {
 	unsigned long stopTime = millis();
 
@@ -334,138 +210,20 @@ unsigned long elapsedTime(unsigned long startTime)
 	}
 }
 
-// implement the printf function from within arduino
-/**************************************************************************/
-static int uart_putchar (char c, FILE *stream)
+void on_pulse()
 {
-		Serial.write(c) ;
-		return 0 ;
+	counts_per_sample++;
+	eventFlag = 1;
 }
 
-/**************************************************************************/
-/*!
-// Since "+" operator doesn't support float values,
-// convert a float value to a fixed point value "%+.3f"
-*/
-/**************************************************************************/
-void appendFloatValueAsString(String& outString,float value)
+void DEBUG_event(void)
 {
-
-	// FIXME: throw error on value > 4,294,967,295
-
-	uint32_t integerPortion = (uint32_t)value;
-	uint32_t fractionalPortion = (value - integerPortion + 0.0005) * 1000;
-
-	outString += integerPortion;
-	outString += ".";
-
-	if (fractionalPortion < 10)			// e.g. 9 > "00" + "9" = "009"
-	{
-		outString += "00";
-	}
-	else if (fractionalPortion < 100)	// e.g. 99 > "0" + "99" = "099"
-	{
-		outString += "0";
-	}
-
-	outString += fractionalPortion;
+	Serial.print(millis()); Serial.print("\t");
+	Serial.print(tmp_ms); Serial.print(" / "); Serial.print((unsigned long)POST_interval); Serial.print("\t");
+	Serial.print(counts_per_sample); Serial.println();
 }
 
-// chibiArduino specific CLI {{{2
-// ----------------------------------------------------------------------------
 
-/**************************************************************************/
-// Get address
-/**************************************************************************/
-void cmdGetMAC(int arg_cnt, char **args)
-{
-	printf_P(PSTR("MAC_address:\t%04X\n"), dev.addr);
-}
-
-/**************************************************************************/
-// Set address
-/**************************************************************************/
-void cmdSetMAC(int arg_cnt, char **args)
-{
-	dev.addr = strtol(args[1], NULL, 16);
-	eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-	printf_P(PSTR("MAC_address set to %04X\n"), dev.addr);
-}
-
-/**************************************************************************/
-// Get the current feed ID
-/**************************************************************************/
-void cmdGetFeedID(int arg_cnt, char **args)
-{
-	printf_P(PSTR("Feed_ID:\t%u\n"), dev.feedID);
-}
-
-/**************************************************************************/
-// Set the current feed ID
-/**************************************************************************/
-void cmdSetFeedID(int arg_cnt, char **args)
-{
-	dev.feedID = strtol(args[1], NULL, 10);
-	eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-	printf_P(PSTR("Feed ID set to %u\n"), dev.feedID);
-}
-
-void GetFirmwareVersion()
-{
-	printf_P(PSTR("Firmware_ver:\t%s\n"), VERSION);
-}
-
-/**************************************************************************/
-// Get the device ID
-/**************************************************************************/
-void cmdGetDevID(int arg_cnt, char **args)
-{
-	printf_P(PSTR("Device_ID:\t%s\n"), dev.devID);
-}
-
-/**************************************************************************/
-// Set the device ID
-/**************************************************************************/
-void cmdSetDevID(int arg_cnt, char **args)
-{
-	if (strlen(args[1]) < 10)
-	{
-		memcpy(dev.devID, args[1], strlen(args[1]) + 1);
-		eeprom_write_block((byte *)&dev, 0, sizeof(device_t));
-		printf_P(PSTR("Device ID set to %s\n"), dev.devID);
-	}
-	else
-	{
-		printf_P(PSTR("ERROR - Too many characters in Device ID. Must be under 10 characters.\n"));
-	}
-}
-
-/**************************************************************************/
-// Print out the current device ID
-/**************************************************************************/
-void cmdStat(int arg_cnt, char **args)
-{
-	cmdGetMAC(arg_cnt, args);
-	cmdGetFeedID(arg_cnt, args);
-	cmdGetDevID(arg_cnt, args);
-	GetFirmwareVersion();
-}
-
-/**************************************************************************/
-// Print some help
-/**************************************************************************/
-void cmdHelp(int arg_cnt, char **args)
-{
-	printf_P(PSTR("Use the following commands:\n"));
-	printf_P(PSTR("\tgetmac:\t\tshows the chibi wireless MAC address.\n"));
-	printf_P(PSTR("\tsetmac:\t\tsets the chibi wireless MAC address(0 .. FFFF).\n"));
-	printf_P(PSTR("\tsetfeed:\tsets the COSM feed ID\n"));
-	printf_P(PSTR("\tgetfeed:\tshows the COSM feed ID\n"));
-	printf_P(PSTR("\tsetdev:\t\tsets the device ID (0 .. 10 chars)\n"));
-	printf_P(PSTR("\tgetdev:\t\tshows the device ID\n"));
-}
-// ----------------------------------------------------------------------------
-// }}}2
 // ----------------------------------------------------------------------------
 // }}}1
 
