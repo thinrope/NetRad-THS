@@ -1,5 +1,5 @@
-A repositroy to host firmware/software related to the DIY Geiger-Mueller
-counter units.
+A repositroy to host firmware/software and documentation related to the fixed
+sensor DIY Geiger-Mueller counter units initially designed by Akiba.
 
 http://www.tokyohackerspace.org/en/event/diy-geiger-mueller-counter-workshop-20-2011-08-08
 http://www.tokyohackerspace.org/en/event/diy-geiger-mueller-counter-workshop-20-2011-08-22
@@ -7,38 +7,32 @@ http://www.tokyohackerspace.org/en/event/diy-geiger-mueller-counter-workshop-20-
 See this for more insights on the history of this kit:
 http://tokyohackerspace.org/en/blog/tokyo-hackerspacerdtn-geiger-shield-dev-history
 
-This kit is a THS[1] project in collaboration with SafeCast[2]. Once you buy
+This kit is a THS[1] project in collaboration with Safecast[2]. Once you buy
 and build your device, you own it (hardware and software) and the data it
-produces. You can opt-in to have your data logged to the THS account on
-Pachube[3] (for free) and have it available to the public (for free).
+produces. By default, with version 2.x the data can be sent to the Safecast
+public API server[3] and subsequently visualized. A free account is needed.
 
 [1]	http://tokyohackerspace.org/
 [2]	http://safecast.org/
-[3]	http://pachube.com/feeds?user=tokyohackerspace
+[3]	http://api.safecast.org/
 
 
 
 
 
 To be able to update/change the firmware of your DIY GM counter, you'll need:
-a) a toolchain to build (compile/link) the source for the Arduino
-b) a tool to upload the binary to the flash of the Arduino
+a) a toolchain to build (compile/link) the source for the microcontroler (ATMega328P)
+b) a tool to upload the binary to the flash (e.g. avrdude)
 c) way to access the source code and related libraries
 
 One relatively simple way is to download the appropriate "Arduino IDE" for your
 OS of choice from http://arduino.cc/en/Main/Software since this provides both
 a) and b) above.
 
-If you are not into development just get a stable snapshot from
-https://github.com/thinrope/NetRad-THS, otherwise use your favorte git tool to
-improve the source and send pull requests.
-
 To have your unit upload data to http://pachube.com/ you need to setup an
 account with them, or use the THS shared account. To use the THS shared
-account, please contact kalin@safecast.org and you'll be given an ID.
 
-THIS IS A WORK IN PROGRESS, PLEASE BEAR WITH ME!
-Feel free to submit issues on github, or contact the developers directly.
+Feel free to submit any issues (bugs, RFEs) via the Github's tracking system.
 
 
 To use the bleeding edge, on Linux:
@@ -50,6 +44,7 @@ git checkout testing
 git submodule init
 git submodule update
 cd src/netrad_ths
+# edit the config
 make
 make upload
 make monitor
