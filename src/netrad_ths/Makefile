@@ -1,3 +1,6 @@
+# version
+VERSION_COMMIT := $(shell git log -n 1 --pretty=format:"%h" 2>/dev/null)
+CPPFLAGS = -DVERSION_COMMIT=$(VERSION_COMMIT)
 
 # hardware settings
 BOARD_TAG = pro328

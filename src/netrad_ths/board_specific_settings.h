@@ -2,13 +2,16 @@
 #define _DEVICE_NORMAL 0
 #define _DEVICE_RESET 1
 
+#define __STR_HELPER(x) #x
+#define __STR(x) __STR_HELPER(x)
+#define _FULL_VERSION "2.0.0-devel [" __STR(VERSION_COMMIT) "]"
 
-// FIXME: split const and dump to EEPROM
+// FIXME: dump to EEPROM instead?
 static struct
 {
 	char const * ID = "80";
-	char const * lat = "34.56" ;
-	char const * lon = "140.80" ;
+	char const * lat = "+34.56" ;
+	char const * lon = "+140.80" ;
 	char const * sensor = "SI-180G";
 	char const * location_country = "Japan";
 	char const * location_other = "Tokyo-to, Minato-ku";
@@ -20,11 +23,10 @@ static struct
 	char const * API_key = "puEMBiqTsN8EfbJh5Tto";
 	char const * API_endpoint = "107.161.164.166";		//  IP of realtime.safecast.org
 	unsigned int const API_update_seconds = 300UL;		// default: 300s -> 300UL
-
-	char state = 0;
-	char connection_failures = 0;
 } nGeigie;
 
+char device_state = 0;
+char device_connection_failures = 0;
 void  (* device_reset) (void) = 0;	// usage: device_reset();
 
 

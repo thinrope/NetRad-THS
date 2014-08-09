@@ -104,7 +104,7 @@ void setup() {
 void loop()
 {
 
-	if (nGeigie.state != _DEVICE_RESET)
+	if (device_state != _DEVICE_RESET)
 	{
 		wdt_reset();
 	}
@@ -159,7 +159,7 @@ void POST_data(float CPM)
 		last_POST_success = millis();
 
 		// clear the connection fail count if we have at least one successful connection
-		nGeigie.connection_failures = 0;
+		device_connection_failures = 0;
 
 		char CPM_string[16];
 		dtostrf(CPM, 0, 1, CPM_string);
@@ -184,10 +184,10 @@ void POST_data(float CPM)
 	else
 	{
 		Serial.println("ERROR: POST failed!");	//FIXME: in that case data needs to be buffered locally
-		nGeigie.connection_failures++;
-		if (nGeigie.connection_failures >= _CONNECTION_FAILURES_MAX)
+		device_connection_failures++;
+		if (device_connection_failures >= _CONNECTION_FAILURES_MAX)
 		{
-			nGeigie.state = _DEVICE_RESET;
+			device_state = _DEVICE_RESET;
 		}
 		last_POST_success = millis();
 		return;
